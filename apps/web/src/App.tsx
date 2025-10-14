@@ -1,26 +1,26 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
 import { RuleEngine, type BattleState, type ActiveSkill, emptyEnergy } from "@arena/engine";
 
-// ==== Tipos auxiliares ====
+/* ===================== Tipos ===================== */
 type CharacterId = "A"|"B"|"C"|"D"|"E"|"F";
 type SlotId = "A1"|"A2"|"A3"|"B1"|"B2"|"B3";
 type TeamId = "A"|"B";
 type TargetTeam = "ALLY"|"ENEMY"|"SELF"|"ALLY_TEAM";
 
-// ==== Helpers UI ====
-const pageWrap: React.CSSProperties = { fontFamily:"system-ui,Segoe UI,Roboto,Arial", padding:16, lineHeight:1.4, color:"#0f172a" };
+/* ===================== Estilos simples ===================== */
+const pageWrap: React.CSSProperties = { fontFamily:"system-ui,Segoe UI,Roboto,Arial", padding:16, lineHeight:1.4, color:"#0f172a", background:"#f8fafc" };
 const h1: React.CSSProperties = { marginBottom:8, fontSize:24 };
 const bar: React.CSSProperties = { display:"flex", gap:8, alignItems:"center", margin:"8px 0 16px" };
 const btn: React.CSSProperties = { padding:"8px 12px", borderRadius:10, border:"1px solid #cbd5e1", cursor:"pointer", background:"#fff", color:"#111827" };
 const btnPrimary: React.CSSProperties = { ...btn, background:"#111827", color:"#fff", border:"1px solid #111827" };
 const grid2: React.CSSProperties = { display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 };
 const panel: React.CSSProperties = { border:"1px solid #e5e7eb", borderRadius:14, background:"#fff" };
-const header: React.CSSProperties = { padding:"10px 12px", borderBottom:"1px solid #e5e7eb", display:"flex", justifyContent:"space-between", alignItems:"center", borderTopLeftRadius:14, borderTopRightRadius:14, background:"#f8fafc" };
+const header: React.CSSProperties = { padding:"10px 12px", borderBottom:"1px solid #e5e7eb", display:"flex", justifyContent:"space-between", alignItems:"center", borderTopLeftRadius:14, borderTopRightRadius:14, background:"#ffffff" };
 const bodyPad: React.CSSProperties = { padding:12 };
 const slotBtn: React.CSSProperties = { border:"1px solid #e5e7eb", borderRadius:12, padding:10, background:"#fff" };
 const small: React.CSSProperties = { fontSize:12, opacity:.7 };
 
-// ==== Catálogo mínimo de skills/char ====
+/* ===================== Catálogo ===================== */
 function mkSkill(id:string, name:string, target:TargetTeam, effects:ActiveSkill["effects"], cost:ActiveSkill["cost"]): ActiveSkill {
   return { id, name, cooldown:1, target, effects, cost };
 }
@@ -48,89 +48,117 @@ const CHAR_KITS: Record<CharacterId, { name:string; kit:ActiveSkill[] }> = {
   A:{ name:"Arcana", kit:KIT_A }, B:{ name:"Brutus", kit:KIT_B }, C:{ name:"Crystal", kit:KIT_C },
   D:{ name:"Dysis", kit:KIT_D }, E:{ name:"Eris", kit:KIT_E }, F:{ name:"Flux", kit:KIT_F },
 };
-// Disponibiliza para debugging no console
-// @ts-ignore
-(window).CHAR_KITS = CHAR_KITS;
+// @ts-ignore para debug no console
+(window as any).CHAR_KITS = CHAR_KITS;
 
+/* ===================== Seleção (barra horizontal) ===================== */
 // ==== Tela de Seleção ====
 function SelectScreen(props:{
   onConfirm: (picksA:Record<"A1"|"A2"|"A3",CharacterId>, picksB:Record<"B1"|"B2"|"B3",CharacterId>)=>void
 }){
-  const [A1,setA1]=useState<CharacterId>("A"); const [A2,setA2]=useState<CharacterId>("B"); const [A3,setA3]=useState<CharacterId>("C");
-  const [B1,setB1]=useState<CharacterId>("A"); const [B2,setB2]=useState<CharacterId>("B"); const [B3,setB3]=useState<CharacterId>("C");
+  const all = Object.keys(CHAR_KITS) as CharacterId[];
 
-  const options = Object.keys(CHAR_KITS) as CharacterId[];
+  const [aSlots, setASlots] = useState<Array<CharacterId|null>>([null,null,null]);
+  const [bSlots, setBSlots] = useState<Array<CharacterId|null>>([null,null,null]);
 
-  const unique = (vals: CharacterId[]) => new Set(vals).size === vals.length;
-  const validA = unique([A1,A2,A3]);
-  const validB = unique([B1,B2,B3]);
+  const put = (team:"A"|"B", id:CharacterId)=>{
+    if (team==="A"){
+      if (aSlots.includes(id)) return;
+      const i=aSlots.findIndex(x=>x===null); if(i<0) return;
+      const nx=[...aSlots]; nx[i]=id; setASlots(nx);
+    } else {
+      if (bSlots.includes(id)) return;
+      const i=bSlots.findIndex(x=>x===null); if(i<0) return;
+      const nx=[...bSlots]; nx[i]=id; setBSlots(nx);
+    }
+  };
+  const rem = (team:"A"|"B", idx:number)=>{
+    if (team==="A"){ const nx=[...aSlots]; nx[idx]=null; setASlots(nx); }
+    else { const nx=[...bSlots]; nx[idx]=null; setBSlots(nx); }
+  };
+
+  const fullA = aSlots.every(x=>x!==null);
+  const fullB = bSlots.every(x=>x!==null);
+
+  const barSlotStyle: React.CSSProperties = { border:"1px solid #e5e7eb", borderRadius:12, minHeight:72, display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 10px", background:"#fff" };
+  const faceBtn: React.CSSProperties = { padding:"6px 10px", border:"1px solid #e5e7eb", borderRadius:10, background:"#fff", cursor:"pointer" };
 
   return (
     <div style={pageWrap}>
       <h1 style={h1}>Arena Multiverso — Seleção</h1>
       <div style={grid2}>
         <div style={panel}>
-          <div style={header}><strong>Time A</strong></div>
-          <div style={{...bodyPad, display:"grid", gap:10}}>
-            {[["A1",A1,setA1],["A2",A2,setA2],["A3",A3,setA3]].map(([label,val,setter]: any)=>(
-              <div key={label} style={slotBtn}>
-                <div style={{marginBottom:6}}>{label}</div>
-                <div style={{display:"flex", gap:8, flexWrap:"wrap"}}>
-                  {options.map(o=>(
-                    <button
-                      key={o}
-                      onClick={()=> (setter as any)(o)}
-                      disabled={val===o}
-                      style={{...btn, background: val===o?"#111827":"#fff", color: val===o?"#fff":"#111827"}}
-                    >{o} • {CHAR_KITS[o].name}</button>
-                  ))}
+          <div style={header}><strong>Time A</strong><span style={small}>Clique no catálogo para preencher 3 slots</span></div>
+          <div style={{padding:12, display:"grid", gap:12}}>
+            <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8}}>
+              {aSlots.map((cid,idx)=>(
+                <div key={idx} style={barSlotStyle}>
+                  <div style={{display:"flex",flexDirection:"column"}}>
+                    <strong>A{idx+1}</strong>
+                    <span style={small}>{cid?`${cid} • ${CHAR_KITS[cid].name}`:"— vazio —"}</span>
+                  </div>
+                  {cid && <button style={faceBtn} onClick={()=>rem("A",idx)}>Remover</button>}
                 </div>
-              </div>
-            ))}
-            {!validA && <div style={{...small, color:"#b91c1c"}}>Não repita o mesmo personagem no mesmo time.</div>}
+              ))}
+            </div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {all.map(id=>(
+                <button key={id}
+                        style={{...faceBtn, background: aSlots.includes(id)?"#111827":"#fff", color:aSlots.includes(id)?"#fff":"#111827"}}
+                        disabled={aSlots.includes(id)}
+                        onClick={()=>put("A",id)}>
+                  {id} • {CHAR_KITS[id].name}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         <div style={panel}>
-          <div style={header}><strong>Time B</strong></div>
-          <div style={{...bodyPad, display:"grid", gap:10}}>
-            {[["B1",B1,setB1],["B2",B2,setB2],["B3",B3,setB3]].map(([label,val,setter]: any)=>(
-              <div key={label} style={slotBtn}>
-                <div style={{marginBottom:6}}>{label}</div>
-                <div style={{display:"flex", gap:8, flexWrap:"wrap"}}>
-                  {options.map(o=>(
-                    <button
-                      key={o}
-                      onClick={()=> (setter as any)(o)}
-                      disabled={val===o}
-                      style={{...btn, background: val===o?"#111827":"#fff", color: val===o?"#fff":"#111827"}}
-                    >{o} • {CHAR_KITS[o].name}</button>
-                  ))}
+          <div style={header}><strong>Time B</strong><span style={small}>Clique no catálogo para preencher 3 slots</span></div>
+          <div style={{padding:12, display:"grid", gap:12}}>
+            <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8}}>
+              {bSlots.map((cid,idx)=>(
+                <div key={idx} style={barSlotStyle}>
+                  <div style={{display:"flex",flexDirection:"column"}}>
+                    <strong>B{idx+1}</strong>
+                    <span style={small}>{cid?`${cid} • ${CHAR_KITS[cid].name}`:"— vazio —"}</span>
+                  </div>
+                  {cid && <button style={faceBtn} onClick={()=>rem("B",idx)}>Remover</button>}
                 </div>
-              </div>
-            ))}
-            {!validB && <div style={{...small, color:"#b91c1c"}}>Não repita o mesmo personagem no mesmo time.</div>}
+              ))}
+            </div>
+            <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+              {all.map(id=>(
+                <button key={id}
+                        style={{...faceBtn, background: bSlots.includes(id)?"#111827":"#fff", color:bSlots.includes(id)?"#fff":"#111827"}}
+                        disabled={bSlots.includes(id)}
+                        onClick={()=>put("B",id)}>
+                  {id} • {CHAR_KITS[id].name}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      <div style={bar}>
+      <div style={{...bar, justifyContent:"space-between"}}>
+        <div style={small}>Oponente pode repetir os mesmos personagens (sem restrição entre times).</div>
         <button
-          style={{...btnPrimary, opacity: (validA && validB)?1:.5, pointerEvents:(validA && validB)?"auto":"none"}}
+          style={{...btnPrimary, opacity:(fullA&&fullB)?1:.5, pointerEvents:(fullA&&fullB)?"auto":"none"}}
           onClick={()=>{
-            props.onConfirm(
-              { A1, A2, A3 },
-              { B1, B2, B3 },
-            )
-          }}
-        >Confirmar seleção</button>
-        <span style={small}>Cada time deve ter 3 personagens distintos.</span>
+            const pickA = { A1:aSlots[0]!, A2:aSlots[1]!, A3:aSlots[2]! };
+            const pickB = { B1:bSlots[0]!, B2:bSlots[1]!, B3:bSlots[2]! };
+            props.onConfirm(pickA, pickB);
+          }}>
+          Confirmar seleção
+        </button>
       </div>
     </div>
   );
 }
-
 // ==== Batalha ====
+
 type Pending = { actorTeam:TeamId; actorId:SlotId; skill:ActiveSkill; targetTeam:TeamId } | null;
 
 export default function App(){
@@ -144,7 +172,6 @@ export default function App(){
   const [turnTimer, setTurnTimer] = useState<number>(60);
   const timerRef = useRef<any>(null);
 
-  // inicia batalha quando seleção feita
   const startBattle = (A:Record<"A1"|"A2"|"A3",CharacterId>, B:Record<"B1"|"B2"|"B3",CharacterId>)=>{
     setPicksA(A); setPicksB(B);
     const toRuntime = (slot:SlotId, hp:number)=>({ id:slot, hp, shield:0, cooldowns:{}, effects:[] as any[]});
@@ -152,8 +179,8 @@ export default function App(){
       turnNumber: 0,
       activeTeamId: "A",
       teams: {
-        A: { id:"A", characters:[toRuntime("A1",1000), toRuntime("A2",1000), toRuntime("A3",1000)], items:[], energy: emptyEnergy() },
-        B: { id:"B", characters:[toRuntime("B1",1200), toRuntime("B2",1100), toRuntime("B3",1100)], items:[], energy: emptyEnergy() },
+        A: { id:"A", characters:[toRuntime("A1",1000),toRuntime("A2",1000),toRuntime("A3",1000)], items:[], energy: emptyEnergy() },
+        B: { id:"B", characters:[toRuntime("B1",1200),toRuntime("B2",1100),toRuntime("B3",1100)], items:[], energy: emptyEnergy() },
       },
       settings: { turnDurationSec:60, maxActionsPerTurn:3, maxPerCharacterPerTurn:1 },
     };
@@ -164,16 +191,14 @@ export default function App(){
     pushLog("Match start: +1 energia para A");
   };
 
-  // timer de turno
   function resetTimer(){
     clearInterval(timerRef.current);
     timerRef.current = setInterval(()=>{
       setTurnTimer((t)=>{
         if (t <= 1) {
           clearInterval(timerRef.current);
-          // timeout: descarta fila e passa turno
           pushLog("⏲️ Timeout: fila descartada. Passando a vez...");
-          doEndTurn(false); // não executar fila
+          doEndTurn(false);
           return 60;
         }
         return t-1;
@@ -183,19 +208,15 @@ export default function App(){
 
   function pushLog(s:string){ setLog(l=>[...l, `[${new Date().toLocaleTimeString()}] ${s}`]); }
 
-  function lookup(skillId:string): ActiveSkill | undefined {
-    // busca no catálogo do personagem que está atuando
-    if (!pending) return undefined;
-    const cid = (pending.actorTeam==="A" ? picksA! : picksB!) [pending.actorId] as CharacterId;
-    return CHAR_KITS[cid].kit.find(k=>k.id===skillId);
-  }
-
   function enqueue(slot:SlotId, sk:ActiveSkill){
     if (!state) return;
     const actorTeam = (slot.startsWith("A") ? "A" : "B") as TeamId;
     if (actorTeam !== state.activeTeamId) return;
 
-    // abre seleção de alvo conforme target
+    if (queue.length >= 3) { pushLog("⚠️ Limite atingido: no máximo 3 ações por turno."); return; }
+    const actsByThis = queue.filter(a=>a.actorId===slot).length;
+    if (actsByThis >= 1) { pushLog(`⚠️ ${slot} já tem 1 ação na fila.`); return; }
+
     if (sk.target === "SELF") {
       setQueue(q=>[...q, { actorTeam, actorId:slot, skillId:sk.id, target:{ team: actorTeam, id: slot } }]);
       pushLog(`${slot} preparou ${sk.name} (SELF)`);
@@ -206,7 +227,6 @@ export default function App(){
       pushLog(`${slot} preparou ${sk.name} (ALLY_TEAM)`);
       return;
     }
-    // precisa escolher alvo em time aliado ou inimigo
     const targetTeam = (sk.target === "ALLY") ? actorTeam : (actorTeam==="A"?"B":"A");
     setPending({ actorTeam, actorId:slot, skill:sk, targetTeam });
     pushLog(`${slot} selecionando alvo para ${sk.name} (${sk.target})`);
@@ -223,20 +243,11 @@ export default function App(){
 
   function confirmTurn(){
     if (!state) return;
-    // valida (engine já revalida, mas aqui deixamos UX)
-    if (queue.length === 0) {
-      pushLog("Nada na fila. Passe a vez ou adicione ações.");
-      return;
-    }
-    // executa e passa a vez
-    const mapSkill = (id:string)=>{
-      // procura no catálogo A e B
-      const all: ActiveSkill[] = ([] as ActiveSkill[]).concat(
-        ((Object.values(picksA??{}) as CharacterId[]).flatMap(cid => CHAR_KITS[cid].kit)),
-        ((Object.values(picksB??{}) as CharacterId[]).flatMap(cid => CHAR_KITS[cid].kit)),
-      );
-      return all.find(s=>s.id===id);
-    };
+    if (queue.length === 0) { pushLog("Nada na fila. Passe a vez ou adicione ações."); return; }
+
+    const allA: ActiveSkill[] = (Object.values(picksA??{}) as CharacterId[]).flatMap(cid=>CHAR_KITS[cid].kit);
+    const allB: ActiveSkill[] = (Object.values(picksB??{}) as CharacterId[]).flatMap(cid=>CHAR_KITS[cid].kit);
+    const mapSkill = (id:string)=> [...allA,...allB].find(s=>s.id===id);
 
     engine.resolveQueue(state, queue, mapSkill as any);
     pushLog("Fila executada.");
@@ -259,8 +270,6 @@ export default function App(){
 
   if (!state) return <div style={pageWrap}>Carregando…</div>;
 
-  const canA = state.activeTeamId==="A";
-  const canB = state.activeTeamId==="B";
   const idsA: SlotId[] = ["A1","A2","A3"];
   const idsB: SlotId[] = ["B1","B2","B3"];
 
@@ -380,13 +389,13 @@ export default function App(){
             <div style={{...bodyPad, display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, fontSize:13}}>
               <div>
                 <div style={{fontWeight:700, marginBottom:6}}>A</div>
-                <pre style={{margin:0, background:"#f8fafc", padding:8, borderRadius:8, border:"1px solid #e5e7eb"}}>
+                <pre style={{margin:0, background:"#f1f5f9", padding:8, borderRadius:8, border:"1px solid #e5e7eb"}}>
 {JSON.stringify(state.teams.A.energy, null, 2)}
                 </pre>
               </div>
               <div>
                 <div style={{fontWeight:700, marginBottom:6}}>B</div>
-                <pre style={{margin:0, background:"#f8fafc", padding:8, borderRadius:8, border:"1px solid #e5e7eb"}}>
+                <pre style={{margin:0, background:"#f1f5f9", padding:8, borderRadius:8, border:"1px solid #e5e7eb"}}>
 {JSON.stringify(state.teams.B.energy, null, 2)}
                 </pre>
               </div>
