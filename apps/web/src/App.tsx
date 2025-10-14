@@ -41,11 +41,10 @@ const KIT_C: ActiveSkill[] = [
   mkSkill("c_3", "Atordoar", "ENEMY", [{kind:"STUN", duration:1}], { BRANCO:1 }),
   mkSkill("c_4", "Dreno", "ENEMY", [{kind:"DANO", value:200}], { PRETA:1 }),
 ];
-const KIT_D = KIT_A, KIT_E = KIT_B, KIT_F = KIT_C;
-
-const CHAR_KITS: Record<CharacterId, { name:string; kit:ActiveSkill[] }> = {
-  A:{ name:"Arcana", kit:KIT_A }, B:{ name:"Brutus", kit:KIT_B }, C:{ name:"Crystal", kit:KIT_C },
-  D:{ name:"Dysis", kit:KIT_D }, E:{ name:"Eris", kit:KIT_E }, F:{ name:"Flux", kit:KIT_F },
+const CHAR_KITS: Record<CharacterId, { name: string; kit: ActiveSkill[] }> = {
+  A: { name: "A", kit: KIT_A },
+  B: { name: "B", kit: KIT_B },
+  C: { name: "C", kit: KIT_C },
 };
 // @ts-ignore
 (window as any).CHAR_KITS = CHAR_KITS;
@@ -448,4 +447,5 @@ export default function App(){
     </div>
   );
 }
+
 
