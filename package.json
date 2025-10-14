@@ -1,12 +1,19 @@
 ﻿{
-  "name": "loc-v0.1",
-  "private": true,
-  "version": "0.1.0",
-  "license": "MIT",
-  "workspaces": ["apps/*","packages/*"],
-  "scripts": {
-    "dev": "echo \"(placeholder) use: npm run dev -w apps/web & npm run dev -w apps/server\"",
-    "build": "echo \"(placeholder) builds virão nos próximos passos\"",
-    "lint": "echo \"(placeholder) lints virão nos próximos passos\""
-  }
+    "name":  "loc-v0.1",
+    "private":  true,
+    "version":  "0.1.0",
+    "license":  "MIT",
+    "workspaces":  [
+                       "apps/*",
+                       "packages/*"
+                   ],
+    "scripts":  {
+                    "dev":  "echo \"(placeholder) use: npm run dev -w apps/web \u0026 npm run dev -w apps/server\"",
+                    "build":  "echo \"(placeholder) builds virão nos próximos passos\"",
+                    "lint":  "echo \"(placeholder) lints virão nos próximos passos\"",
+                    "engine:build":  "cd packages/engine \u0026\u0026 npx tsc -p tsconfig.json",
+                    "web:dev":  "cd apps/web \u0026\u0026 vite --host --port 5174",
+                    "web:build":  "cd apps/web \u0026\u0026 vite build",
+                    "web:preview":  "cd apps/web \u0026\u0026 vite preview --port 5173"
+                }
 }
