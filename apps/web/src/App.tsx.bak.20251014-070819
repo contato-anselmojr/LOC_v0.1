@@ -8,7 +8,7 @@ type TeamId = "A"|"B";
 type TargetTeam = "ALLY"|"ENEMY"|"SELF"|"ALLY_TEAM";
 
 /* ===================== Estilos ===================== */
-const pageWrap: React.CSSProperties = { fontFamily:"Inter, system-ui, Segoe UI, Roboto, Arial", padding:16, lineHeight:1.5, color:"#0f172a", background:"#f8fafc" };
+const pageWrap: React.CSSProperties = { fontFamily:"system-ui, Segoe UI, Roboto, Arial", padding:16, lineHeight:1.4, color:"#0f172a", background:"#f8fafc" };
 const h1: React.CSSProperties = { marginBottom:8, fontSize:24 };
 const bar: React.CSSProperties = { display:"flex", gap:8, alignItems:"center", margin:"8px 0 16px" };
 const btn: React.CSSProperties = { padding:"8px 12px", borderRadius:10, border:"1px solid #cbd5e1", cursor:"pointer", background:"#fff", color:"#111827" };
@@ -18,46 +18,26 @@ const header: React.CSSProperties = { padding:"10px 12px", borderBottom:"1px sol
 const bodyPad: React.CSSProperties = { padding:12 };
 const slotBtn: React.CSSProperties = { border:"1px solid #e5e7eb", borderRadius:12, padding:10, background:"#fff" };
 const small: React.CSSProperties = { fontSize:12, opacity:.7 };
- 
-/* ===================== Balance por tipo (MVP) ===================== */
-const EFFECT_DEFAULTS: Record<string, { value?: number; duration?: number; cooldown: number }> = {
-  DANO:     { value: 80,  cooldown: 2 },
-  HEAL:     { value: 60,  cooldown: 2 },
-  ESCUDO:   { value: 70,  cooldown: 3 },
-  DOT:      { value: 20,  duration: 3, cooldown: 4 },
-  HOT:      { value: 20,  duration: 3, cooldown: 4 },
-  STUN:     {              duration: 1, cooldown: 3 },
-  SILENCE:  {              duration: 1, cooldown: 3 },
-  MARCACAO: {              duration: 2, cooldown: 2 }, // placeholder
-};
 
 /* ===================== Catálogo ===================== */
 function mkSkill(id:string, name:string, target:TargetTeam, effects:ActiveSkill["effects"], cost:ActiveSkill["cost"]): ActiveSkill {
-  const fixed = effects.map(e => {
-    const d = (EFFECT_DEFAULTS as any)[e.kind];
-    return {
-      ...e,
-      ...(d && d.value    !== undefined ? { value: d.value } : {}),
-      ...(d && d.duration !== undefined ? { duration: d.duration } : {}),
-    };
-  });
-  const cd = Math.max(1, ...fixed.map(e => (((EFFECT_DEFAULTS as any)[e.kind]?.cooldown) ?? 1)));
-  return { id, name, target, effects: fixed, cost, cooldown: cd };
+  return { id, name, cooldown:1, target, effects, cost };
+}
 const KIT_A: ActiveSkill[] = [
-  mkSkill("a_1", "Raio", "ENEMY", [{kind:"DANO"}], { AZUL:2 }),
-  mkSkill("a_2", "Barreira", "SELF", [{kind:"ESCUDO"}], { AZUL:1, BRANCO:1 }),
-  mkSkill("a_3", "Atordoar", "ENEMY", [{kind:"STUN"}], { BRANCO:2 }),
-  mkSkill("a_4", "Incendiar", "ENEMY", [{kind:"DOT"}], { VERMELHO:2 }),
+  mkSkill("a_1", "Raio", "ENEMY", [{kind:"DANO", value:250}], { AZUL:1 }),
+  mkSkill("a_2", "Barreira", "SELF", [{kind:"ESCUDO", value:250}], { VERDE:1 }),
+  mkSkill("a_3", "Atordoar", "ENEMY", [{kind:"STUN", duration:1}], { BRANCO:1 }),
+  mkSkill("a_4", "Marca", "ENEMY", [{kind:"MARCACAO", duration:2}], { PRETA:1 }),
 ];
 const KIT_B: ActiveSkill[] = [
-  mkSkill("b_1", "Golpe", "ENEMY", [{kind:"DANO"}], { VERMELHO:2 }),
-  mkSkill("b_2", "Guarda", "SELF", [{kind:"ESCUDO"}], { AZUL:2 }),
-  mkSkill("b_3", "Silenciar", "ENEMY", [{kind:"SILENCE"}], { BRANCO:2 }),
-  mkSkill("b_4", "Bênção", "ALLY", [{kind:"HOT"}], { VERDE:2 }),
+  mkSkill("b_1", "Golpe", "ENEMY", [{kind:"DANO", value:250}], { VERMELHO:1 }),
+  mkSkill("b_2", "Guarda", "SELF", [{kind:"ESCUDO", value:300}], { VERDE:1 }),
+  mkSkill("b_3", "Silenciar", "ENEMY", [{kind:"SILENCE", duration:1}], { BRANCO:1 }),
+  mkSkill("b_4", "Bênção", "ALLY", [{kind:"HOT", value:80, duration:2}], { VERDE:1 }),
 ];
 const KIT_C: ActiveSkill[] = [
-  mkSkill("c_1", "Flecha", "ENEMY", [{kind:"DANO"}], { VERMELHO:2 }),
-  mkSkill("c_2", "Cura", "ALLY", [{kind:"HOT"}], { VERDE:2 }),
+  mkSkill("c_1", "Flecha", "ENEMY", [{kind:"DANO", value:250}], { VERMELHO:1 }),
+  mkSkill("c_2", "Cura", "ALLY", [{kind:"HOT", value:80, duration:2}], { VERDE:1 }),
   mkSkill("c_3", "Atordoar", "ENEMY", [{kind:"STUN", duration:1}], { BRANCO:1 }),
   mkSkill("c_4", "Dreno", "ENEMY", [{kind:"DANO", value:200}], { PRETA:1 }),
 ];
@@ -178,52 +158,7 @@ function SelectScreen(props:{
 /* ===================== Batalha ===================== */
 type Pending = { actorTeam:TeamId; actorId:SlotId; skill:ActiveSkill; targetTeam:TeamId } | null;
 
-/* ===================== UI Aux: Chips de Energia ===================== */
-const ENERGY_META: Record<string,{label:string; icon:string; bg:string; border:string}> = {
-  AZUL:      { label:"Azul",      icon:"🔵", bg:"#eff6ff", border:"#93c5fd" },
-  VERMELHO:  { label:"Vermelho",  icon:"🔴", bg:"#fef2f2", border:"#fca5a5" },
-  VERDE:     { label:"Verde",     icon:"🟢", bg:"#ecfdf5", border:"#6ee7b7" },
-  BRANCO:    { label:"Branco",    icon:"⚪", bg:"#f8fafc", border:"#cbd5e1" },
-  PRETA:     { label:"Preta",     icon:"⚫", bg:"#f1f5f9", border:"#94a3b8" },
-};
-
-function EnergyChips({pool}:{pool:Record<string,number>}) {
-  const wrap: React.CSSProperties = { display:"grid", gridTemplateColumns:"repeat(2, minmax(0,1fr))", gap:8 };
-  const chip: React.CSSProperties = { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 10px", borderRadius:12, fontWeight:700, border:"1px solid #e5e7eb" };
-  const nameStyle: React.CSSProperties = { display:"flex", alignItems:"center", gap:8, fontWeight:700 };
-  return (
-    <div style={wrap}>
-      {Object.entries(ENERGY_META).map(([k,m]) => (
-        <div key={k} style={{...chip, background:m.bg, borderColor:m.border}}>
-          <span style={nameStyle}><span aria-hidden>{m.icon}</span>{m.label}</span>
-          <span style={{fontVariantNumeric:"tabular-nums"}}>{(pool as any)[k] ?? 0}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-}
 export default function App(){
-  // === helpers visuais mínimos (não alteram layout) ===
-  const ENERGY_COLORS = { AZUL:"#3b82f6", VERMELHO:"#ef4444", VERDE:"#22c55e", BRANCO:"#e5e7eb", PRETA:"#111827" } as const;
-
-  const icon = (sk: ActiveSkill) => {
-    const k = sk.effects?.[0]?.kind;
-    return k==="DANO"?"⚔️":k==="ESCUDO"?"🛡️":k==="STUN"?"💫":k==="SILENCE"?"🤐":k==="DOT"?"🔥":k==="HOT"?"✨":k==="MARCACAO"?"🎯":"🧩";
-  };
-
-  const EnergyView = (pool: Record<"AZUL"|"VERMELHO"|"VERDE"|"BRANCO"|"PRETA", number>) => (
-    <div style={{display:"grid", gap:6}}>
-      {(["AZUL","VERMELHO","VERDE","BRANCO","PRETA"] as const).map(k=>(
-        <div key={k} style={{display:"flex", alignItems:"center", gap:8}}>
-          <span style={{display:"inline-block", width:10, height:10, borderRadius:999, background:ENERGY_COLORS[k], boxShadow:"inset 0 0 0 1px rgba(0,0,0,.06)"}} />
-          <span style={{minWidth:80, fontSize:13, color:"#334155"}}>{k}</span>
-          <strong style={{fontSize:13}}>{pool[k]}</strong>
-        </div>
-      ))}
-    </div>
-  );
-
   const engine = useMemo(()=> new RuleEngine(777), []);
   const [state, setState] = useState<BattleState|null>(null);
   const [picksA, setPicksA] = useState<Record<"A1"|"A2"|"A3",CharacterId>|null>(null);
@@ -413,7 +348,9 @@ export default function App(){
                           color: disabled ? "#9ca3af" : "#111827",
                           borderColor: disabled ? "#e5e7eb" : "#cbd5e1"
                         }}
-                      >{icon(sk)} {sk.name}</button>
+                      >
+                        {sk.name}
+                      </button>
                     );
                   })}
                 </div>
@@ -493,8 +430,3 @@ export default function App(){
     </div>
   );
 }
-
-
-
-
-
