@@ -41,10 +41,24 @@ const KIT_C: ActiveSkill[] = [
   mkSkill("c_3", "Atordoar", "ENEMY", [{kind:"STUN", duration:1}], { BRANCO:1 }),
   mkSkill("c_4", "Dreno", "ENEMY", [{kind:"DANO", value:200}], { PRETA:1 }),
 ];
+const KIT_D: ActiveSkill[] = [
+  mkSkill("d_1", "Impacto",    "ENEMY", [{kind:"DANO",   value:250}], { VERMELHO:1 }),
+  mkSkill("d_2", "Proteção",   "SELF",  [{kind:"ESCUDO", value:300}], { AZUL:1 }),
+  mkSkill("d_3", "Calar Voz",  "ENEMY", [{kind:"SILENCE",duration:1}], { BRANCO:1 }),
+  mkSkill("d_4", "Chama",      "ENEMY", [{kind:"DOT",    value:80, duration:2}], { VERMELHO:1 }),
+];
+const KIT_E: ActiveSkill[] = [
+  mkSkill("e_1", "Lâmina",     "ENEMY", [{kind:"DANO",   value:250}], { VERDE:1 }),
+  mkSkill("e_2", "Bênção",     "ALLY",  [{kind:"HOT",    value:80, duration:2}], { VERDE:1 }),
+  mkSkill("e_3", "Atordoar",   "ENEMY", [{kind:"STUN",   duration:1}], { BRANCO:1 }),
+  mkSkill("e_4", "Barreira",   "ALLY",  [{kind:"ESCUDO", value:250}], { AZUL:1 }),
+];
 const CHAR_KITS: Record<CharacterId, { name: string; kit: ActiveSkill[] }> = {
   A: { name: "A", kit: KIT_A },
   B: { name: "B", kit: KIT_B },
   C: { name: "C", kit: KIT_C },
+  D: { name: "D", kit: KIT_D },
+  E: { name: "E", kit: KIT_E },
 };
 // @ts-ignore
 (window as any).CHAR_KITS = CHAR_KITS;
@@ -158,6 +172,12 @@ function SelectScreen(props:{
 type Pending = { actorTeam:TeamId; actorId:SlotId; skill:ActiveSkill; targetTeam:TeamId } | null;
 
 export default function App(){
+  // === Ícones por personagem ===
+  const CHAR_ICON: Record<CharacterId, string> = {
+    A:"🗡️", B:"🛡️", C:"🏹", D:"🔥", E:"❄️", F:"⚡"
+  };
+  const charIcon = (id: CharacterId) => CHAR_ICON[id] ?? "🧩";
+
   // === helpers visuais mínimos (não alteram layout) ===
   const ENERGY_COLORS = { AZUL:"#3b82f6", VERMELHO:"#ef4444", VERDE:"#22c55e", BRANCO:"#e5e7eb", PRETA:"#111827" } as const;
 
@@ -345,7 +365,7 @@ export default function App(){
                 <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8}}>
                   <div style={{display:"flex", gap:8, alignItems:"center"}}>
                     <strong>{team}:{slot}</strong>
-                    <span style={small}>{cid} • {CHAR_KITS[cid].name}</span>
+                    <span style={small}>{charIcon(cid)} {charIcon(cid)} {cid} • {CHAR_KITS[cid].name}</span>
                   </div>
                   <div style={small}>HP {ch.hp} (+{ch.shield} esc)</div>
                 </div>
@@ -447,5 +467,7 @@ export default function App(){
     </div>
   );
 }
+
+
 
 
