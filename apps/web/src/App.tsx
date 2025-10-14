@@ -13,51 +13,52 @@ type QA = { actorTeam: TeamId; actorId: string; skillId: string; target?: { team
 type Screen = "SELECT" | "BATTLE"
 
 /** ---------- CATÁLOGO DE PERSONAGENS (A–F) COM 4 SKILLS CADA ---------- */
-function S(id:string, name:string, cost:Partial<Record<"AZUL"|"VERMELHO"|"VERDE"|"BRANCO"|"PRETA",number>>, effects:ActiveSkill["effects"]): ActiveSkill {
-  return { id, name, cost, cooldown:1, target:"ENEMY", effects }
+function S(id:string, name:string, cost:Partial<Record<"AZUL"|"VERMELHO"|"VERDE"|"BRANCO"|"PRETA",number>>, effects:ActiveSkill["effects"], target:ActiveSkill["target"]="ENEMY"): ActiveSkill {
+  return { id, name, cost, cooldown:1, target, effects }
 }
 const CHAR_KITS: Record<CharacterId, { name:string; kit: ActiveSkill[] }> = {
   A: { name:"Arcana (Mago DPS)",
        kit: [
-         S("A_as1","Raio", {AZUL:1}, [{kind:"DANO",value:250}]),
-         S("A_as2","Explosão", {AZUL:2}, [{kind:"DANO",value:350}]),
-         S("A_as3","Marca Arcana", {PRETA:1}, [{kind:"MARCACAO",duration:2}]),
-         S("A_as4","Atordoar", {BRANCO:1}, [{kind:"STUN",duration:1}]),
+         S("A_as1","Raio", {AZUL:1}, [{kind:"DANO",value:250}], "ENEMY"),
+         S("A_as2","Explosão", {AZUL:2}, [{kind:"DANO",value:350}], "ENEMY"),
+         S("A_as3","Marca Arcana", {PRETA:1}, [{kind:"MARCACAO",duration:2}], "ENEMY"),
+         S("A_as4","Atordoar", {BRANCO:1}, [{kind:"STUN",duration:1}], "ENEMY"),
        ]},
   B: { name:"Blademan (Lutador)",
        kit: [
-         S("B_bs1","Golpe", {VERMELHO:1}, [{kind:"DANO",value:250}]),
-         S("B_bs2","Cortar", {VERMELHO:2}, [{kind:"DANO",value:350}]),
-         { ...S("B_bs3","Guarda", {VERDE:1}, [{kind:"ESCUDO",value:300}]), target:"SELF" },
-         S("B_bs4","Provocar", {BRANCO:1}, [{kind:"SILENCE",duration:1}]),
+         S("B_bs1","Golpe", {VERMELHO:1}, [{kind:"DANO",value:250}], "ENEMY"),
+         S("B_bs2","Cortar", {VERMELHO:2}, [{kind:"DANO",value:350}], "ENEMY"),
+         S("B_bs3","Guarda", {VERDE:1}, [{kind:"ESCUDO",value:300}], "SELF"),
+         S("B_bs4","Provocar", {BRANCO:1}, [{kind:"SILENCE",duration:1}], "ENEMY"),
        ]},
   C: { name:"Clériga (Suporte Cura)",
        kit: [
-         { ...S("C_cs1","Benção", {VERDE:1}, [{kind:"ESCUDO",value:250}]), target:"ALLY_TEAM" },
-         S("C_cs2","Luz", {AZUL:1}, [{kind:"DANO",value:200}]),
-         S("C_cs3","Selo", {BRANCO:1}, [{kind:"SILENCE",duration:1}]),
-         { ...S("C_cs4","Reforço", {VERDE:1}, [{kind:"RESISTENCIA",duration:2,value:0}]), target:"ALLY_TEAM" },
+         // ajustado para ALLY (alvo único) para demonstrar seleção de aliado
+         S("C_cs1","Benção", {VERDE:1}, [{kind:"ESCUDO",value:250}], "ALLY"),
+         S("C_cs2","Luz", {AZUL:1}, [{kind:"DANO",value:200}], "ENEMY"),
+         S("C_cs3","Selo", {BRANCO:1}, [{kind:"SILENCE",duration:1}], "ENEMY"),
+         S("C_cs4","Reforço", {VERDE:1}, [{kind:"RESISTENCIA",duration:2,value:0}], "ALLY_TEAM"),
        ]},
   D: { name:"Defensor (Tank Early)",
        kit: [
-         { ...S("D_ds1","Muralha", {VERDE:2}, [{kind:"ESCUDO",value:350}]), target:"SELF" },
-         S("D_ds2","Impacto", {VERMELHO:1}, [{kind:"DANO",value:220}]),
-         S("D_ds3","Atordoar", {BRANCO:1}, [{kind:"STUN",duration:1}]),
-         S("D_ds4","Quebra-Marcas", {PRETA:1}, [{kind:"DANO",value:250}]),
+         S("D_ds1","Muralha", {VERDE:2}, [{kind:"ESCUDO",value:350}], "SELF"),
+         S("D_ds2","Impacto", {VERMELHO:1}, [{kind:"DANO",value:220}], "ENEMY"),
+         S("D_ds3","Atordoar", {BRANCO:1}, [{kind:"STUN",duration:1}], "ENEMY"),
+         S("D_ds4","Quebra-Marcas", {PRETA:1}, [{kind:"DANO",value:250}], "ENEMY"),
        ]},
   E: { name:"Envenenadora (DoT)",
        kit: [
-         S("E_es1","Dardo", {VERMELHO:1}, [{kind:"DANO",value:230}]),
-         S("E_es2","Veneno", {PRETA:1}, [{kind:"DOT",duration:2,value:80}]),
-         S("E_es3","Fumaça", {BRANCO:1}, [{kind:"SILENCE",duration:1}]),
-         S("E_es4","Estocada", {VERMELHO:2}, [{kind:"DANO",value:330}]),
+         S("E_es1","Dardo", {VERMELHO:1}, [{kind:"DANO",value:230}], "ENEMY"),
+         S("E_es2","Veneno", {PRETA:1}, [{kind:"DOT",duration:2,value:80}], "ENEMY"),
+         S("E_es3","Fumaça", {BRANCO:1}, [{kind:"SILENCE",duration:1}], "ENEMY"),
+         S("E_es4","Estocada", {VERMELHO:2}, [{kind:"DANO",value:330}], "ENEMY"),
        ]},
   F: { name:"Frost (Controle)",
        kit: [
-         S("F_fs1","Gélido", {AZUL:1}, [{kind:"DANO",value:220}]),
-         S("F_fs2","Congelar", {BRANCO:1}, [{kind:"STUN",duration:1}]),
-         { ...S("F_fs3","Barreira de Gelo", {VERDE:1}, [{kind:"ESCUDO",value:280}]), target:"SELF" },
-         S("F_fs4","Estilhaçar", {AZUL:2}, [{kind:"DANO",value:340}]),
+         S("F_fs1","Gélido", {AZUL:1}, [{kind:"DANO",value:220}], "ENEMY"),
+         S("F_fs2","Congelar", {BRANCO:1}, [{kind:"STUN",duration:1}], "ENEMY"),
+         S("F_fs3","Barreira de Gelo", {VERDE:1}, [{kind:"ESCUDO",value:280}], "SELF"),
+         S("F_fs4","Estilhaçar", {AZUL:2}, [{kind:"DANO",value:340}], "ENEMY"),
        ]},
 }
 
@@ -74,6 +75,7 @@ export default function App() {
   const [pickTeam, setPickTeam] = useState<TeamId>("A")
   const [pickSlotA, setPickSlotA] = useState<SlotIdA>("A1")
   const [pickSlotB, setPickSlotB] = useState<SlotIdB>("B1")
+  const [selectMsg, setSelectMsg] = useState<string>("")
 
   /** Mapeamento final dos picks para usar na batalha (skills corretas por slot) */
   const [picks, setPicks] = useState<{
@@ -121,14 +123,15 @@ export default function App() {
 
   /** ---------- TELA DE SELEÇÃO ---------- */
   function pickChar(cid:CharacterId){
+    setSelectMsg("")
     if(pickTeam==="A"){
-      const s = {...teamA.slots}
-      s[pickSlotA] = cid
-      setTeamA({slots:s})
+      const used = Object.values(teamA.slots).includes(cid)
+      if(used){ setSelectMsg(`⚠️ ${cid} já está no Time A.`); return }
+      const s = {...teamA.slots}; s[pickSlotA] = cid; setTeamA({slots:s})
     } else {
-      const s = {...teamB.slots}
-      s[pickSlotB] = cid
-      setTeamB({slots:s})
+      const used = Object.values(teamB.slots).includes(cid)
+      if(used){ setSelectMsg(`⚠️ ${cid} já está no Time B.`); return }
+      const s = {...teamB.slots}; s[pickSlotB] = cid; setTeamB({slots:s})
     }
   }
   function canConfirmTeams(){
@@ -180,19 +183,50 @@ export default function App() {
     setScreen("BATTLE")
   }
 
-  /** ---------- BATALHA: FILA, CONFIRMAR/PASSAR, TIMEOUT ---------- */
-  function queueAction(actorTeam: TeamId, actorId: string, skillId: string){
+  /** ---------- BATALHA: alvo explícito ---------- */
+  // Modo de seleção de alvo após clicar skill que exige alvo unitário
+  const [pendingTarget, setPendingTarget] = useState<null | { actorTeam:TeamId; actorId:string; skillId:string; targetTeam:TeamId }>(null)
+
+  function startAction(actorTeam: TeamId, actorId: string, skill: ActiveSkill){
     if(!state) return
     if (actorTeam !== state.activeTeamId) { addLog(`ignorado: não é o turno do time ${actorTeam}`); return }
+
+    // SELF -> enfileira direto com alvo = self
+    if (skill.target === "SELF") {
+      enqueueAction(actorTeam, actorId, skill.id, actorTeam, actorId)
+      return
+    }
+    // ALLY_TEAM -> não precisa alvo específico (aplica no time todo)
+    if (skill.target === "ALLY_TEAM") {
+      enqueueAction(actorTeam, actorId, skill.id, actorTeam, undefined)
+      return
+    }
+    // ENEMY / ALLY -> exige escolher um personagem
+    const targetTeam: TeamId = (skill.target === "ALLY") ? actorTeam : (actorTeam === "A" ? "B" : "A")
+    setPendingTarget({ actorTeam, actorId, skillId: skill.id, targetTeam })
+    addLog(`selecione o alvo em ${targetTeam} para ${actorId} • ${skill.name}`)
+  }
+
+  function chooseTarget(slotId: string, teamClicked: TeamId){
+    if(!pendingTarget || !state) return
+    if(teamClicked !== pendingTarget.targetTeam) return
+    enqueueAction(pendingTarget.actorTeam, pendingTarget.actorId, pendingTarget.skillId, pendingTarget.targetTeam, slotId)
+    setPendingTarget(null)
+  }
+
+  function cancelTargeting(){ setPendingTarget(null) }
+
+  function enqueueAction(actorTeam: TeamId, actorId: string, skillId: string, targetTeam: TeamId, targetId?: string){
+    if(!state) return
     const byChar = new Map(queue.map(q=>[q.actorId,0]))
     for (const q of queue) byChar.set(q.actorId, (byChar.get(q.actorId)??0)+1)
     if (queue.length >= state.settings.maxActionsPerTurn) { addLog("fila cheia (3 ações)"); return }
     if ((byChar.get(actorId)??0) >= state.settings.maxPerCharacterPerTurn) { addLog(`limite: ${actorId} já tem ação no turno`); return }
-    const targetTeam: TeamId = actorTeam==="A" ? "B" : "A"
-    setQueue(prev => [...prev, { actorTeam, actorId, skillId, target:{ team: targetTeam } }])
+    setQueue(prev => [...prev, { actorTeam, actorId, skillId, target:{ team: targetTeam, id: targetId } }])
     const skillName = lookup[skillId]?.name ?? skillId
-    addLog(`fila += ${actorTeam}:${actorId} • ${skillName}`)
+    addLog(`fila += ${actorTeam}:${actorId} • ${skillName}${targetId?` → alvo ${targetTeam}:${targetId}`:""}`)
   }
+
   function confirmTurn(){
     if(!state) return
     const s = { ...state }
@@ -205,8 +239,10 @@ export default function App() {
     engine.startTurn(s); addLog(`startTurn(): início do turno do time ${s.activeTeamId} ${s.turnNumber>=2 ? "(+3 energias)" : ""}`)
     setQueue([])
     setState({ ...s })
+    setPendingTarget(null)
     resetTimer(true)
   }
+
   function timeoutPass(fromTimer=false){
     if(!state) return
     const s = { ...state }
@@ -215,8 +251,10 @@ export default function App() {
     engine.startTurn(s); addLog(`startTurn(): início do turno do time ${s.activeTeamId} ${s.turnNumber>=2 ? "(+3 energias)" : ""}`)
     setQueue([])
     setState({ ...s })
+    setPendingTarget(null)
     resetTimer(true)
   }
+
   function convertToBlack(baseColor: BaseColor){
     if(!state) return
     const s = { ...state }
@@ -231,6 +269,8 @@ export default function App() {
       <div style={{ fontFamily:"system-ui, sans-serif", padding:16, color:"#111" }}>
         <h1>Seleção de Times</h1>
         <p>Escolha 3 personagens para cada time. Depois confirme para ir à batalha.</p>
+
+        {selectMsg && <div style={{margin:"8px 0", padding:"8px 10px", border:"1px solid #facc15", background:"#fef9c3", borderRadius:10, color:"#713f12"}}>{selectMsg}</div>}
 
         <div style={{ display:"grid", gridTemplateColumns:"1fr 300px 1fr", gap:16, alignItems:"start" }}>
           {/* Team A panel */}
@@ -286,6 +326,7 @@ export default function App() {
             setTeamA({slots:{A1:null,A2:null,A3:null}})
             setTeamB({slots:{B1:null,B2:null,B3:null}})
             setPickTeam("A"); setPickSlotA("A1"); setPickSlotB("B1")
+            setSelectMsg("")
           }} style={btnAlt}>Limpar Seleção</button>
         </div>
       </div>
@@ -313,6 +354,7 @@ export default function App() {
         </span>
         <button onClick={()=>setShowConsole(s=>!s)} style={btnAlt}>{showConsole ? "Ocultar Console" : "Mostrar Console"}</button>
         <button onClick={()=>setLog([])} style={btnAlt}>Limpar Console</button>
+        {pendingTarget && <button onClick={cancelTargeting} style={{...btnAlt, borderColor:"#ef4444"}}>Cancelar Seleção de Alvo</button>}
       </div>
 
       {state && picks && (
@@ -324,7 +366,9 @@ export default function App() {
               canAct={canActA}
               state={state}
               picks={picks}
-              onAction={(slot, skillId)=> queueAction("A", slot, skillId)}
+              pendingTarget={pendingTarget}
+              onAction={(slot, skill)=> startAction("A", slot, skill)}
+              onPickTarget={(slot)=> chooseTarget(slot, "A")}
             />
             <BattleTeamPanel
               title="Time B"
@@ -332,7 +376,9 @@ export default function App() {
               canAct={canActB}
               state={state}
               picks={picks}
-              onAction={(slot, skillId)=> queueAction("B", slot, skillId)}
+              pendingTarget={pendingTarget}
+              onAction={(slot, skill)=> startAction("B", slot, skill)}
+              onPickTarget={(slot)=> chooseTarget(slot, "B")}
             />
 
             <div style={{ gridColumn:"1 / span 2", ...card, borderStyle:"dashed" }}>
@@ -344,7 +390,7 @@ export default function App() {
             <div style={{ gridColumn:"1 / span 2", ...card }}>
               <h3 style={{ marginTop:0 }}>Fila de Ações (turno {state.activeTeamId})</h3>
               {queue.length===0 ? <div style={{opacity:.6}}>— vazia —</div> :
-                <ol>{queue.map((q,i)=> <li key={i}>{q.actorTeam}:{q.actorId} • {(lookup[q.skillId]?.name ?? q.skillId)}</li>)}</ol>}
+                <ol>{queue.map((q,i)=> <li key={i}>{q.actorTeam}:{q.actorId} • {(lookup[q.skillId]?.name ?? q.skillId)}{q.target?.id?` → ${q.target.team}:${q.target.id}`:""}</li>)}</ol>}
               <small>Regras: até 3 ações por turno; máx. 1 por personagem.</small>
             </div>
           </div>
@@ -415,21 +461,33 @@ function BattleTeamPanel(props:{
   canAct: boolean
   state: BattleState
   picks: { A: Record<SlotIdA, CharacterId>, B: Record<SlotIdB, CharacterId> }
-  onAction: (slotId: string, skillId: string)=>void
+  pendingTarget: { actorTeam:TeamId; actorId:string; skillId:string; targetTeam:TeamId } | null
+  onAction: (slotId: string, skill: ActiveSkill)=>void
+  onPickTarget: (slotId: string)=>void
 }){
   const ids = props.team==="A" ? (["A1","A2","A3"] as const) : (["B1","B2","B3"] as const)
+  const isTargetingThisTeam = props.pendingTarget?.targetTeam === props.team
   return (
     <div style={{...formationWrap, borderColor: props.canAct ? "#16a34a" : "#e5e7eb"}}>
       <div style={formationHeader}>
-        <strong>{props.title}</strong> {props.canAct ? <span style={{ color:"#16a34a", fontWeight:700 }}>• Turno</span> : <span style={{ color:"#64748b" }}>• Aguardando</span>}
+        <strong>{props.title}</strong>{" "}
+        {props.canAct ? <span style={{ color:"#16a34a", fontWeight:700 }}>• Turno</span> : <span style={{ color:"#64748b" }}>• Aguardando</span>}
+        {isTargetingThisTeam && <span style={{ marginLeft:8, color:"#4f46e5" }}>— Selecione um alvo</span>}
       </div>
       <div style={{padding:12, display:"grid", gap:10}}>
         {ids.map((slot)=>{
           const ch = props.state.teams[props.team].characters.find(c=>c.id===slot)!
           const cid = props.team==="A" ? props.picks.A[slot as SlotIdA] : props.picks.B[slot as SlotIdB]
           const kit = CHAR_KITS[cid].kit
+          const targetHighlight = isTargetingThisTeam ? { borderColor:"#4f46e5", outline:"2px solid #c7d2fe", cursor:"pointer" as const } : {}
           return (
-            <div key={slot} style={{...slotBtn, width:"100%", textAlign:"left"}}>
+            <div
+              key={slot}
+              onClick={()=>{ if(isTargetingThisTeam) props.onPickTarget(slot) }}
+              style={{
+                ...slotBtn, width:"100%", textAlign:"left",
+                ...(isTargetingThisTeam ? targetHighlight : {})
+              }}>
               <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6}}>
                 <div style={{display:"flex", gap:8, alignItems:"center"}}>
                   <div style={{fontWeight:800}}>{props.team}:{slot}</div>
@@ -439,11 +497,17 @@ function BattleTeamPanel(props:{
               </div>
               <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:6}}>
                 {kit.map(sk=>
-                  <button key={sk.id} onClick={()=>props.onAction(slot, sk.id)} style={{...btnSmall, opacity: props.canAct ? 1 : .6}} disabled={!props.canAct}>
+                  <button
+                    key={sk.id}
+                    onClick={(e)=>{ e.stopPropagation(); props.onAction(slot, sk) }}
+                    style={{...btnSmall, opacity: props.canAct ? 1 : .6}}
+                    disabled={!props.canAct}
+                  >
                     {sk.name}
                   </button>
                 )}
               </div>
+              {isTargetingThisTeam && <div style={{marginTop:6, fontSize:12, color:"#4f46e5"}}>Clique para escolher este alvo</div>}
             </div>
           )
         })}
