@@ -1,5 +1,26 @@
 ﻿<!doctype html>
 <meta charset="utf-8">
-<meta http-equiv="refresh" content="0; url=./">
 <title>Redirecionando…</title>
-<p>Redirecionando para a página inicial… Se não redirecionar, <a href="./">clique aqui</a>.</p>
+<script>
+(function () {
+  // base do GitHub Pages para este repo:
+  var BASE = "/LOC_v0.1/";
+
+  // Se já estamos na base OU já voltamos de um 404 (flag), não redireciona de novo
+  var isAtBase = location.pathname === BASE || location.pathname === BASE.replace(/\/$/, "");
+  var cameFrom404 = location.search.indexOf("from404=1") !== -1;
+  if (isAtBase || cameFrom404) {
+    // apenas mostra um link de fallback
+    document.write('<p>Abra a <a href="' + BASE + '">página inicial</a>.</p>');
+    // tenta garantir ir para a home (sem loop)
+    if (!isAtBase) location.replace(BASE);
+    return;
+  }
+
+  // Monta um destino único (com flag) para evitar loops
+  var tail = location.pathname.replace(BASE, "");
+  var target = BASE + "?from404=1#" + encodeURIComponent(tail + location.search + location.hash);
+  location.replace(target);
+})();
+</script>
+<p>Redirecionando para a página inicial… Se não redirecionar, <a href="/LOC_v0.1/">clique aqui</a>.</p>
