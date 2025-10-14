@@ -23,7 +23,11 @@ export default function App() {
   const engine = useMemo(()=> new RuleEngine(777), [])
   const [state, setState]   = useState<BattleState | null>(null)
 
-  // Fila e console
+  // seleção de personagem para enfileirar ações com 1 clique
+  const [selA, setSelA] = useState<"A1"|"A2"|"A3">("A1")
+  const [selB, setSelB] = useState<"B1"|"B2"|"B3">("B1")
+
+  // Fila, console e timer
   const [queue, setQueue]   = useState<QA[]>([])
   const [log, setLog]       = useState<string[]>([])
   const [showConsole, setShowConsole] = useState<boolean>(true)
@@ -32,7 +36,6 @@ export default function App() {
   const t = () => new Date().toLocaleTimeString()
   const addLog = (m:string)=> setLog(prev=>[...prev, `[${t()}] ${m}`])
 
-  // Timer de turno (60s)
   const TURN_SECONDS = 60
   const [remaining, setRemaining] = useState<number>(TURN_SECONDS)
   const [timerOn, setTimerOn] = useState<boolean>(false)
@@ -42,8 +45,7 @@ export default function App() {
       setRemaining(prev=>{
         if (prev <= 1) {
           window.clearInterval(id)
-          // Simula timeout: descarta fila e passa turno
-          timeoutPass(true) // true = vindo do timer
+          timeoutPass(true)
           return TURN_SECONDS
         }
         return prev - 1
@@ -52,11 +54,7 @@ export default function App() {
     return ()=> window.clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timerOn, state?.activeTeamId, state?.turnNumber])
-
-  function resetTimer(start:boolean){
-    setRemaining(TURN_SECONDS)
-    setTimerOn(start)
-  }
+  function resetTimer(start:boolean){ setRemaining(TURN_SECONDS); setTimerOn(start) }
 
   const toRuntime = (id:string, hp:number) => ({ id, hp, shield:0, cooldowns:{}, effects:[] as any[] })
 
@@ -70,11 +68,11 @@ export default function App() {
       },
       settings: { turnDurationSec:TURN_SECONDS, maxActionsPerTurn:3, maxPerCharacterPerTurn:1 },
     }
-    engine.startMatch(s) // +1 energia aleatória somente para o ativo (A)
+    engine.startMatch(s) // +1 energia para A no início da partida
     setState({ ...s })
     setQueue([])
     setLog([`startMatch(): +1 energia para o time ${s.activeTeamId}`])
-    resetTimer(true) // inicia parado; usuário decide
+    resetTimer(true) // timer auto a cada turno
   }
 
   function queueAction(actorTeam: "A"|"B", actorId: string, skillId: string){
@@ -102,41 +100,38 @@ export default function App() {
   function confirmTurn(){
     if(!state) return
     const s = { ...state }
-    // @ts-ignore validateQueue existe no engine
+    // @ts-ignore
     const v = engine.validateQueue(s, queue)
     if (!v.ok) { addLog(`ERRO: ${v.reason || "fila inválida"}`); return }
     engine.resolveQueue(s, queue, (id)=>lookup[id])
     addLog(`resolveQueue(): executadas ${queue.length} ação(ões) do time ${s.activeTeamId}`)
-    engine.endTurn(s);                addLog(`endTurn(): fim do turno do time ${state.activeTeamId}`)
-    engine.startTurn(s);              addLog(`startTurn(): início do turno do time ${s.activeTeamId} ${s.turnNumber>=2 ? "(+3 energias)" : ""}`)
+    engine.endTurn(s);   addLog(`endTurn(): fim do turno do time ${state.activeTeamId}`)
+    engine.startTurn(s); addLog(`startTurn(): início do turno do time ${s.activeTeamId} ${s.turnNumber>=2 ? "(+3 energias)" : ""}`)
     setQueue([])
     setState({ ...s })
-    resetTimer(true) // reseta mantendo estado (se estava rodando, continua)
+    resetTimer(true)
   }
 
   function timeoutPass(fromTimer=false){
     if(!state) return
     const s = { ...state }
     if (queue.length>0) addLog(`timeout: descartando ${queue.length} ação(ões) não confirmadas`)
-    engine.endTurn(s);                addLog(`endTurn(): ${(fromTimer?"timeout — ":"")}passou o turno do time ${state.activeTeamId}`)
-    engine.startTurn(s);              addLog(`startTurn(): início do turno do time ${s.activeTeamId} ${s.turnNumber>=2 ? "(+3 energias)" : ""}`)
+    engine.endTurn(s);   addLog(`endTurn(): ${(fromTimer?"timeout — ":"")}turno passou do time ${state.activeTeamId}`)
+    engine.startTurn(s); addLog(`startTurn(): início do turno do time ${s.activeTeamId} ${s.turnNumber>=2 ? "(+3 energias)" : ""}`)
     setQueue([])
     setState({ ...s })
     resetTimer(true)
   }
 
-  // ————— SIMULAÇÕES ÚTEIS (sem comprometer o core) —————
+  // SIMULAÇÕES
   function sim_EnfileirarPadraoAtivo(){
     if (!state) return
-    if (state.activeTeamId === "A") queueAction("A","A1","atk_magico")
-    else queueAction("B","B1","golpe")
+    if (state.activeTeamId === "A") queueAction("A", selA, "atk_magico")
+    else queueAction("B", selB, "golpe")
   }
-  function sim_ConfirmarX1(){
-    confirmTurn()
-  }
+  function sim_ConfirmarX1(){ confirmTurn() }
   function sim_AutoNTurnos(n:number){
     if (!state || n<=0) return
-    // roda turnos com pequeno delay: enfileira padrão, confirma e programa próxima rodada
     sim_EnfileirarPadraoAtivo()
     setTimeout(()=>{ confirmTurn(); setTimeout(()=> sim_AutoNTurnos(n-1), 350) }, 350)
   }
@@ -150,45 +145,64 @@ export default function App() {
     addLog(`sim: +1 energia base aleatória para ${s.activeTeamId} (${pick})`)
   }
 
+  // helpers UI
+  const mm = String(Math.floor(remaining/60)).padStart(2,"0")
+  const ss = String(remaining%60).padStart(2,"0")
+
   const hpA = state?.teams.A.characters.map(c=>`${c.id}:${c.hp}(+${c.shield} esc)`).join("  ") ?? "-"
   const hpB = state?.teams.B.characters.map(c=>`${c.id}:${c.hp}(+${c.shield} esc)`).join("  ") ?? "-"
   const canActA = state?.activeTeamId === "A"
   const canActB = state?.activeTeamId === "B"
 
-  const mm = String(Math.floor(remaining/60)).padStart(2,"0")
-  const ss = String(remaining%60).padStart(2,"0")
-
   return (
     <div style={{ fontFamily:"system-ui, sans-serif", padding:16, lineHeight:1.45, color:"#111" }}>
       <h1 style={{ marginBottom:8 }}>Arena Multiverso — MVP (web)</h1>
-      <p>Fila → <strong>Confirmar/Passar</strong> executa as ações. Timeout descarta e passa automaticamente.</p>
+      <p>Times em formação 3x3 (visual “-  x  -”). Fila → <strong>Confirmar/Passar</strong> executa. Timer por turno automático.</p>
 
       {/* Controles principais */}
       <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
         <button onClick={setupMatch} style={btn}>Iniciar Partida</button>
 
-        <button onClick={()=>queueAction("A","A1","atk_magico")} style={{...btn, opacity: canActA?1:.5}} disabled={!canActA}>Fila: A1 — Raio</button>
-        <button onClick={()=>queueAction("B","B1","golpe")}      style={{...btn, opacity: canActB?1:.5}} disabled={!canActB}>Fila: B1 — Golpe</button>
+        <button onClick={()=>queueAction("A", selA, "atk_magico")} style={{...btn, opacity: canActA?1:.5}} disabled={!canActA}>Fila: {selA} — Raio</button>
+        <button onClick={()=>queueAction("B", selB, "golpe")}      style={{...btn, opacity: canActB?1:.5}} disabled={!canActB}>Fila: {selB} — Golpe</button>
 
         <button onClick={confirmTurn} style={btnPrimary}>Confirmar / Passar</button>
-        <button onClick={()=>timeoutPass(false)} style={btnAlt}>Simular Timeout (descarta & passa)</button>
+        <button onClick={()=>timeoutPass(false)} style={btnAlt}>Simular Timeout</button>
 
         <button onClick={()=>convertToBlack("AZUL")} style={btnAlt}>Conversão: AZUL→PRETA</button>
 
-        {/* Timer */}
         <span style={{ alignSelf:"center", fontWeight:800, padding:"6px 10px", border:"1px solid #d1d5db", borderRadius:10, background:"#fff" }}>
           ⏱️ Tempo: {mm}:{ss}
         </span>
-        <button onClick={()=>setTimerOn(v=>!v)} style={btnAlt}>{timerOn ? "Pausar Timer" : "Iniciar Timer"}</button>
-        <button onClick={()=>resetTimer(true)} style={btnAlt}>Resetar Timer</button>
-
         <button onClick={()=>setShowConsole(s=>!s)} style={btnAlt}>{showConsole ? "Ocultar Console" : "Mostrar Console"}</button>
         <button onClick={()=>setLog([])} style={btnAlt}>Limpar Console</button>
       </div>
 
-      {/* Painéis */}
+      {/* Formação dos Times */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
+        <Formation
+          title="Time A"
+          teamId="A"
+          selected={selA}
+          onSelect={(id)=>setSelA(id as any)}
+          canAct={canActA}
+          leftLabels={["A1","A2","A3"]}
+          rightLabels={["","",""]}
+        />
+        <Formation
+          title="Time B"
+          teamId="B"
+          selected={selB}
+          onSelect={(id)=>setSelB(id as any)}
+          canAct={canActB}
+          leftLabels={["","",""]}
+          rightLabels={["B1","B2","B3"]}
+        />
+      </div>
+
+      {/* Painéis de energia e status */}
       {state && (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, alignItems:"start" }}>
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginTop:16, alignItems:"start" }}>
           <div style={card}>
             <h3 style={{ marginTop:0 }}>Time A — Energia</h3>
             <pre style={{ margin:0 }}>{JSON.stringify(state.teams.A.energy, null, 2)}</pre>
@@ -202,8 +216,6 @@ export default function App() {
             <div style={{ marginTop:6 }}><strong>HP A:</strong> {hpA}</div>
             <div><strong>HP B:</strong> {hpB}</div>
           </div>
-
-          {/* Fila */}
           <div style={{ gridColumn:"1 / span 2", ...card }}>
             <h3 style={{ marginTop:0 }}>Fila de Ações (turno {state.activeTeamId})</h3>
             {queue.length===0 ? <div style={{opacity:.6}}>— vazia —</div> :
@@ -211,16 +223,16 @@ export default function App() {
             <small>Regras: até 3 ações por turno; máx. 1 por personagem.</small>
           </div>
 
-          {/* Simulações rápidas */}
+          {/* Simulações */}
           <div style={{ gridColumn:"1 / span 2", ...card }}>
             <h3 style={{ marginTop:0 }}>Simulações</h3>
             <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
               <button onClick={sim_EnfileirarPadraoAtivo} style={btnAlt}>Enfileirar padrão do ativo</button>
-              <button onClick={sim_ConfirmarX1} style={btnAlt}>Confirmar x1 (executa & passa)</button>
-              <button onClick={()=>sim_AutoNTurnos(3)} style={btnAlt}>Auto 3 turnos (demo)</button>
+              <button onClick={sim_ConfirmarX1} style={btnAlt}>Confirmar x1</button>
+              <button onClick={()=>sim_AutoNTurnos(3)} style={btnAlt}>Auto 3 turnos</button>
               <button onClick={sim_Plus1EnergiaBaseAtivo} style={btnAlt}>+1 energia base (ativo)</button>
             </div>
-            <small>Estas simulações ajudam a testar o fluxo, sem afetar o motor.</small>
+            <small>Somente para testes; não altera o motor.</small>
           </div>
         </div>
       )}
@@ -238,6 +250,110 @@ export default function App() {
       )}
     </div>
   )
+}
+
+/** Formação 3x3 com centro marcado “x” (visual: -  x  -).
+ *  Para Time A: rótulos à esquerda (A1/A2/A3). Para Time B: rótulos à direita (B1/B2/B3).
+ *  Clique numa posição para selecionar o personagem ativo do time.
+ */
+function Formation(props:{
+  title: string
+  teamId: TeamId
+  leftLabels: [string,string,string] | [string?,string?,string?]
+  rightLabels: [string,string,string] | [string?,string?,string?]
+  selected: string
+  onSelect: (id:string)=>void
+  canAct: boolean
+}){
+  const { title, teamId, leftLabels, rightLabels, selected, onSelect, canAct } = props
+  // três linhas com layout: [label] [centro x] [label]
+  const rows = [0,1,2].map(i=>{
+    const left  = leftLabels[i]  ?? ""
+    const right = rightLabels[i] ?? ""
+    const cell = (id:string, side:"L"|"R")=>{
+      if (!id) return <div />
+      const isSel = selected === id
+      return (
+        <button
+          onClick={()=>onSelect(id)}
+          title={(teamId==="A"?"Selecionar ":"Select ") + id}
+          style={{
+            ...slotBtn,
+            borderColor: isSel ? "#4f46e5" : "#d1d5db",
+            outline: isSel ? "2px solid #c7d2fe" : "none",
+            cursor: "pointer",
+            opacity: canAct ? 1 : .6
+          }}
+        >
+          <div style={{ fontWeight:800 }}>{id}</div>
+          <small style={{ opacity:.75 }}>{teamId}</small>
+        </button>
+      )
+    }
+    return (
+      <div key={i} style={rowLine}>
+        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          {left ? cell(left,"L") : <div style={{ width:84 }} />}
+        </div>
+        <div style={centerCell}>x</div>
+        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+          {right ? cell(right,"R") : <div style={{ width:84 }} />}
+        </div>
+      </div>
+    )
+  })
+  return (
+    <div style={formationWrap}>
+      <div style={formationHeader}>
+        <strong>{title}</strong> {canAct ? <span style={{ color:"#16a34a", fontWeight:700 }}>• Turno</span> : <span style={{ color:"#64748b" }}>• Aguardando</span>}
+      </div>
+      <div style={formationGrid}>
+        {rows}
+      </div>
+      <div style={{ padding:"6px 8px", textAlign:"center", color:"#475569" }}>
+        Clique no slot do seu time para selecionar: {selected}
+      </div>
+    </div>
+  )
+}
+
+const formationWrap: React.CSSProperties = {
+  border:"1px solid #e5e7eb",
+  borderRadius:16,
+  overflow:"hidden",
+  background:"#fff",
+  boxShadow:"0 1px 2px rgba(0,0,0,.04)"
+}
+const formationHeader: React.CSSProperties = {
+  padding:"8px 12px",
+  borderBottom:"1px solid #e5e7eb",
+  background:"linear-gradient(180deg, #fafafa, #f3f4f6)"
+}
+const formationGrid: React.CSSProperties = {
+  display:"grid",
+  gridTemplateRows:"repeat(3, 72px)",
+  gap:10,
+  padding:12
+}
+const rowLine: React.CSSProperties = {
+  display:"grid",
+  gridTemplateColumns:"1fr 40px 1fr",
+  alignItems:"center",
+  gap:8
+}
+const centerCell: React.CSSProperties = {
+  width:40, height:40, border:"1px dashed #cbd5e1", borderRadius:10,
+  display:"grid", placeItems:"center", color:"#111", background:"#f8fafc", fontWeight:800
+}
+const slotBtn: React.CSSProperties = {
+  width:84, height:52,
+  border:"1px solid #d1d5db",
+  borderRadius:12,
+  background:"linear-gradient(180deg, #ffffff, #f8fafc)",
+  color:"#111",
+  display:"grid",
+  placeItems:"center",
+  gap:2
 }
 
 const card: React.CSSProperties = {
@@ -288,4 +404,3 @@ const consoleBody: React.CSSProperties = {
   fontSize:13,
   lineHeight:1.5
 }
-
