@@ -284,7 +284,8 @@ function EnergyChips({pool}:{pool:Record<string,number>}) {
     // Limites: 3 por turno / 1 por personagem
     if (queue.length >= 3) { pushLog("⚠️ Limite atingido: no máximo 3 ações por turno."); return; }
     const actsByThis = queue.filter(a=>a.actorId===slot).length;
-    if (actsByThis >= 1) { pushLog(`⚠️ ${slot} já tem 1 ação na fila.`); return; }
+const existingByThisIdx = queue.findIndex(a=>a.actorId===slot && a.skillId===sk.id);
+if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`⚠️ ${slot} já tem 1 ação na fila.`); return; }
 
     // Toggle: clicar de novo na mesma skill cancela seleção
     if (pending && pending.actorId===slot && pending.skill.id===sk.id) {
@@ -295,17 +296,31 @@ function EnergyChips({pool}:{pool:Record<string,number>}) {
 
     // Alvos imediatos
     if (sk.target === "SELF") {
-      setPending(null);
-      setQueue(q=>[...q, { actorTeam, actorId:slot, skillId:sk.id, target:{ team: actorTeam, id: slot } }]);
-      pushLog(`${slot} preparou ${sk.name} (SELF)`);
-      return;
-    }
+  const existing = queue.findIndex(a=>a.actorId===slot && a.skillId===sk.id);
+  if (existing >= 0) {
+    setQueue(q=> q.filter((_,i)=> i!==existing));
+    setPending(null);
+    pushLog(`❌ ${slot} cancelou ${sk.name}`);
+  } else {
+    setPending(null);
+    setQueue(q=>[...q, { actorTeam, actorId:slot, skillId:sk.id, target:{ team: actorTeam, id: slot } }]);
+    pushLog(`${slot} preparou ${sk.name} (SELF)`);
+  }
+  return;
+}
     if (sk.target === "ALLY_TEAM") {
-      setPending(null);
-      setQueue(q=>[...q, { actorTeam, actorId:slot, skillId:sk.id, target:{ team: actorTeam } }]);
-      pushLog(`${slot} preparou ${sk.name} (ALLY_TEAM)`);
-      return;
-    }
+  const existing = queue.findIndex(a=>a.actorId===slot && a.skillId===sk.id);
+  if (existing >= 0) {
+    setQueue(q=> q.filter((_,i)=> i!==existing));
+    setPending(null);
+    pushLog(`❌ ${slot} cancelou ${sk.name}`);
+  } else {
+    setPending(null);
+    setQueue(q=>[...q, { actorTeam, actorId:slot, skillId:sk.id, target:{ team: actorTeam } }]);
+    pushLog(`${slot} preparou ${sk.name} (ALLY_TEAM)`);
+  }
+  return;
+}
 
     // Seleção de alvo (ALLY => aliados; ENEMY => inimigos)
     const targetTeam = (sk.target === "ALLY") ? actorTeam : (actorTeam==="A"?"B":"A");
@@ -404,7 +419,8 @@ function EnergyChips({pool}:{pool:Record<string,number>}) {
                     const silenced = ch.effects?.some((e:any)=>e.kind==="SILENCE" && e.duration>0);
                     const blockedBySilence = silenced && sk.effects.some(e=>!["DANO","ESCUDO"].includes(e.kind));
                     const isPendingThis = !!pending && pending.actorId===slot && pending.skill.id===sk.id;
-const active = isPendingThis;
+const queuedThis = queue.some(a=>a.actorId===slot && a.skillId===sk.id);
+const active = isPendingThis || queuedThis;
 const disabled = !canAct || stunned || blockedBySilence || (!!pending && !isPendingThis);
 
                     return (
@@ -494,6 +510,7 @@ const disabled = !canAct || stunned || blockedBySilence || (!!pending && !isPend
     </div>
   );
 }
+
 
 
 
