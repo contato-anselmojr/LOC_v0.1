@@ -8,12 +8,11 @@ type TeamId = "A"|"B";
 type TargetTeam = "ALLY"|"ENEMY"|"SELF"|"ALLY_TEAM";
 
 /* ===================== Estilos ===================== */
-const pageWrap: React.CSSProperties = { fontFamily:"system-ui,Segoe UI,Roboto,Arial", padding:16, lineHeight:1.4, color:"#0f172a", background:"#f8fafc" };
+const pageWrap: React.CSSProperties = { fontFamily:"system-ui, Segoe UI, Roboto, Arial", padding:16, lineHeight:1.4, color:"#0f172a", background:"#f8fafc" };
 const h1: React.CSSProperties = { marginBottom:8, fontSize:24 };
 const bar: React.CSSProperties = { display:"flex", gap:8, alignItems:"center", margin:"8px 0 16px" };
 const btn: React.CSSProperties = { padding:"8px 12px", borderRadius:10, border:"1px solid #cbd5e1", cursor:"pointer", background:"#fff", color:"#111827" };
 const btnPrimary: React.CSSProperties = { ...btn, background:"#111827", color:"#fff", border:"1px solid #111827" };
-const grid2: React.CSSProperties = { display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 };
 const panel: React.CSSProperties = { border:"1px solid #e5e7eb", borderRadius:14, background:"#fff" };
 const header: React.CSSProperties = { padding:"10px 12px", borderBottom:"1px solid #e5e7eb", display:"flex", justifyContent:"space-between", alignItems:"center", borderTopLeftRadius:14, borderTopRightRadius:14, background:"#ffffff" };
 const bodyPad: React.CSSProperties = { padding:12 };
@@ -51,13 +50,11 @@ const CHAR_KITS: Record<CharacterId, { name:string; kit:ActiveSkill[] }> = {
 // @ts-ignore
 (window as any).CHAR_KITS = CHAR_KITS;
 
-/* ===================== Seleção (barra horizontal) ===================== */
-// ==== Tela de Seleção ====
+/* ===================== Seleção ===================== */
 function SelectScreen(props:{
   onConfirm: (picksA:Record<"A1"|"A2"|"A3",CharacterId>, picksB:Record<"B1"|"B2"|"B3",CharacterId>)=>void
 }){
   const all = Object.keys(CHAR_KITS) as CharacterId[];
-
   const [aSlots, setASlots] = useState<Array<CharacterId|null>>([null,null,null]);
   const [bSlots, setBSlots] = useState<Array<CharacterId|null>>([null,null,null]);
 
@@ -86,7 +83,7 @@ function SelectScreen(props:{
   return (
     <div style={pageWrap}>
       <h1 style={h1}>Arena Multiverso — Seleção</h1>
-      <div style={grid2}>
+      <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:16}}>
         <div style={panel}>
           <div style={header}><strong>Time A</strong><span style={small}>Clique no catálogo para preencher 3 slots</span></div>
           <div style={{padding:12, display:"grid", gap:12}}>
@@ -157,8 +154,8 @@ function SelectScreen(props:{
     </div>
   );
 }
-// ==== Batalha ====
 
+/* ===================== Batalha ===================== */
 type Pending = { actorTeam:TeamId; actorId:SlotId; skill:ActiveSkill; targetTeam:TeamId } | null;
 
 export default function App(){
@@ -193,22 +190,24 @@ export default function App(){
 
   function resetTimer(){
     clearInterval(timerRef.current);
-    timerRef.current = setInterval(()=>{
-      setTurnTimer((t)=>{
+    timerRef.current = setInterval(() => {
+      setTurnTimer((t) => {
         if (t <= 1) {
           clearInterval(timerRef.current);
+          setQueue([]);
+          setPending(null);
           pushLog("⏲️ Timeout: fila descartada. Passando a vez...");
-          doEndTurn(false);
+          doEndTurn(true); // reinicia timer próximo turno
           return 60;
         }
-        return t-1;
+        return t - 1;
       });
     }, 1000);
   }
 
   function pushLog(s:string){ setLog(l=>[...l, `[${new Date().toLocaleTimeString()}] ${s}`]); }
 
-  // === CORRIGIDO: toggle (clicar na mesma skill cancela) + buffs escolhem aliado (ALLY) ===
+  // === Enfileirar ação: toggle para cancelar a mesma skill; buffs (ALLY) escolhem aliado ===
   function enqueue(slot:SlotId, sk:ActiveSkill){
     if (!state) return;
     const actorTeam = (slot.startsWith("A") ? "A" : "B") as TeamId;
@@ -219,7 +218,7 @@ export default function App(){
     const actsByThis = queue.filter(a=>a.actorId===slot).length;
     if (actsByThis >= 1) { pushLog(`⚠️ ${slot} já tem 1 ação na fila.`); return; }
 
-    // Toggle: clicar de novo na mesma skill cancela seleção pendente
+    // Toggle: clicar de novo na mesma skill cancela seleção
     if (pending && pending.actorId===slot && pending.skill.id===sk.id) {
       setPending(null);
       pushLog(`❌ ${slot} cancelou ${sk.name}`);
@@ -264,7 +263,7 @@ export default function App(){
     const mapSkill = (id:string)=> [...allA,...allB].find(s=>s.id===id);
 
     engine.resolveQueue(state, queue, mapSkill as any);
-    pushLog("Fila executada.");
+    pushLog("Fila executada."); setPending(null);
     doEndTurn(true);
   }
 
@@ -281,7 +280,6 @@ export default function App(){
   if (!picksA || !picksB) {
     return <SelectScreen onConfirm={(A,B)=>startBattle(A,B)} />;
   }
-
   if (!state) return <div style={pageWrap}>Carregando…</div>;
 
   const idsA: SlotId[] = ["A1","A2","A3"];
