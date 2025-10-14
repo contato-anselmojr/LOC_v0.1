@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+Ôªøimport React, { useEffect, useMemo, useRef, useState } from "react";
 import { RuleEngine, type BattleState, type ActiveSkill, emptyEnergy } from "@arena/engine";
 
 /* ===================== Tipos ===================== */
@@ -17,9 +17,11 @@ const panel: React.CSSProperties = { border:"1px solid #e5e7eb", borderRadius:14
 const header: React.CSSProperties = { padding:"10px 12px", borderBottom:"1px solid #e5e7eb", display:"flex", justifyContent:"space-between", alignItems:"center", borderTopLeftRadius:14, borderTopRightRadius:14, background:"#ffffff" };
 const bodyPad: React.CSSProperties = { padding:12 };
 const slotBtn: React.CSSProperties = { border:"1px solid #e5e7eb", borderRadius:12, padding:10, background:"#fff" };
-const small: React.CSSProperties = { fontSize:12, opacity:.7 };
+const hpBarOuter: React.CSSProperties = { position:"relative", height:10, background:"#e5e7eb", borderRadius:999, overflow:"hidden" };
+const hpBarInner: React.CSSProperties = { position:"absolute", left:0, top:0, bottom:0, width:"0%", background:"#22c55e" };
+const hpBarText: React.CSSProperties  = { fontSize:12, marginTop:4 };const small: React.CSSProperties = { fontSize:12, opacity:.7 };
 
-/* ===================== Cat·logo ===================== */
+/* ===================== Cat√°logo ===================== */
 function mkSkill(id:string, name:string, target:TargetTeam, effects:ActiveSkill["effects"], cost:ActiveSkill["cost"]): ActiveSkill {
   return { id, name, cooldown:1, target, effects, cost };
 }
@@ -33,7 +35,7 @@ const KIT_B: ActiveSkill[] = [
   mkSkill("b_1", "Golpe", "ENEMY", [{kind:"DANO", value:250}], { VERMELHO:1 }),
   mkSkill("b_2", "Guarda", "SELF", [{kind:"ESCUDO", value:300}], { VERDE:1 }),
   mkSkill("b_3", "Silenciar", "ENEMY", [{kind:"SILENCE", duration:1}], { BRANCO:1 }),
-  mkSkill("b_4", "BÍnÁ„o", "ALLY", [{kind:"HOT", value:80, duration:2}], { VERDE:1 }),
+  mkSkill("b_4", "B√™n√ß√£o", "ALLY", [{kind:"HOT", value:80, duration:2}], { VERDE:1 }),
 ];
 const KIT_C: ActiveSkill[] = [
   mkSkill("c_1", "Flecha", "ENEMY", [{kind:"DANO", value:250}], { VERMELHO:1 }),
@@ -44,13 +46,13 @@ const KIT_C: ActiveSkill[] = [
 const KIT_F = KIT_A, KIT_G = KIT_B, KIT_H = KIT_C, KIT_I = KIT_A;
 const KIT_D: ActiveSkill[] = [
   mkSkill("d_1", "Impacto",    "ENEMY", [{kind:"DANO",   value:250}], { VERMELHO:1 }),
-  mkSkill("d_2", "ProteÁ„o",   "SELF",  [{kind:"ESCUDO", value:300}], { AZUL:1 }),
+  mkSkill("d_2", "Prote√ß√£o",   "SELF",  [{kind:"ESCUDO", value:300}], { AZUL:1 }),
   mkSkill("d_3", "Calar Voz",  "ENEMY", [{kind:"SILENCE",duration:1}], { BRANCO:1 }),
   mkSkill("d_4", "Chama",      "ENEMY", [{kind:"DOT",    value:80, duration:2}], { VERMELHO:1 }),
 ];
 const KIT_E: ActiveSkill[] = [
-  mkSkill("e_1", "L‚mina",     "ENEMY", [{kind:"DANO",   value:250}], { VERDE:1 }),
-  mkSkill("e_2", "BÍnÁ„o",     "ALLY",  [{kind:"HOT",    value:80, duration:2}], { VERDE:1 }),
+  mkSkill("e_1", "L√¢mina",     "ENEMY", [{kind:"DANO",   value:250}], { VERDE:1 }),
+  mkSkill("e_2", "B√™n√ß√£o",     "ALLY",  [{kind:"HOT",    value:80, duration:2}], { VERDE:1 }),
   mkSkill("e_3", "Atordoar",   "ENEMY", [{kind:"STUN",   duration:1}], { BRANCO:1 }),
   mkSkill("e_4", "Barreira",   "ALLY",  [{kind:"ESCUDO", value:250}], { AZUL:1 }),
 ];
@@ -62,7 +64,7 @@ const CHAR_KITS: Record<CharacterId, { name: string; kit: ActiveSkill[] }> = {
 // @ts-ignore
 (window as any).CHAR_KITS = CHAR_KITS;
 
-/* ===================== SeleÁ„o ===================== */
+/* ===================== Sele√ß√£o ===================== */
 function SelectScreen(props:{
   onConfirm: (picksA:Record<"A1"|"A2"|"A3",CharacterId>, picksB:Record<"B1"|"B2"|"B3",CharacterId>)=>void
 }){
@@ -100,17 +102,17 @@ const nx=[...bSlots]; nx[i]=id; setBSlots(nx);
 
   return (
     <div style={pageWrap}>
-      <h1 style={h1}>Arena Multiverso ó SeleÁ„o</h1>
+      <h1 style={h1}>Arena Multiverso ‚Äî Sele√ß√£o</h1>
       <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:16}}>
         <div style={panel}>
-          <div style={header}><strong>Time A</strong><span style={small}>Clique no cat·logo para preencher 3 slots</span></div>
+          <div style={header}><strong>Time A</strong><span style={small}>Clique no cat√°logo para preencher 3 slots</span></div>
           <div style={{padding:12, display:"grid", gap:12}}>
             <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8}}>
               {aSlots.map((cid,idx)=>(
                 <div key={idx} style={barSlotStyle}>
                   <div style={{display:"flex",flexDirection:"column"}}>
                     <strong>A{idx+1}</strong>
-                    <span style={small}>{cid?`${cid} ï ${CHAR_KITS[cid].name}`:"ó vazio ó"}</span>
+                    <span style={small}>{cid?`${cid} ‚Ä¢ ${CHAR_KITS[cid].name}`:"‚Äî vazio ‚Äî"}</span>
                   </div>
                   {cid && <button style={{...faceBtn, color:"#ef4444"}} onClick={()=>rem("A",idx)}>Remover</button>}
                 </div>
@@ -122,7 +124,7 @@ const nx=[...bSlots]; nx[i]=id; setBSlots(nx);
                         style={{...faceBtn, background: aSlots.includes(id)?"#111827":"#fff", color:aSlots.includes(id)?"#fff":"#111827"}}
                         
                         onClick={()=>put("A",id)}>
-                  {id} ï {CHAR_KITS[id].name}
+                  {id} ‚Ä¢ {CHAR_KITS[id].name}
                 </button>
               ))}
             </div>
@@ -130,14 +132,14 @@ const nx=[...bSlots]; nx[i]=id; setBSlots(nx);
         </div>
 
         <div style={panel}>
-          <div style={header}><strong>Time B</strong><span style={small}>Clique no cat·logo para preencher 3 slots</span></div>
+          <div style={header}><strong>Time B</strong><span style={small}>Clique no cat√°logo para preencher 3 slots</span></div>
           <div style={{padding:12, display:"grid", gap:12}}>
             <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8}}>
               {bSlots.map((cid,idx)=>(
                 <div key={idx} style={barSlotStyle}>
                   <div style={{display:"flex",flexDirection:"column"}}>
                     <strong>B{idx+1}</strong>
-                    <span style={small}>{cid?`${cid} ï ${CHAR_KITS[cid].name}`:"ó vazio ó"}</span>
+                    <span style={small}>{cid?`${cid} ‚Ä¢ ${CHAR_KITS[cid].name}`:"‚Äî vazio ‚Äî"}</span>
                   </div>
                   {cid && <button style={{...faceBtn, color:"#ef4444"}} onClick={()=>rem("B",idx)}>Remover</button>}
                 </div>
@@ -149,7 +151,7 @@ const nx=[...bSlots]; nx[i]=id; setBSlots(nx);
                         style={{...faceBtn, background: bSlots.includes(id)?"#111827":"#fff", color:bSlots.includes(id)?"#fff":"#111827"}}
                         
                         onClick={()=>put("B",id)}>
-                  {id} ï {CHAR_KITS[id].name}
+                  {id} ‚Ä¢ {CHAR_KITS[id].name}
                 </button>
               ))}
             </div>
@@ -158,7 +160,7 @@ const nx=[...bSlots]; nx[i]=id; setBSlots(nx);
       </div>
 
       <div style={{...bar, justifyContent:"space-between"}}>
-        <div style={small}>Oponente pode repetir os mesmos personagens (sem restriÁ„o entre times).</div>
+        <div style={small}>Oponente pode repetir os mesmos personagens (sem restri√ß√£o entre times).</div>
         <button
           style={{...btnPrimary, opacity:(fullA&&fullB)?1:.5, pointerEvents:(fullA&&fullB)?"auto":"none"}}
           onClick={()=>{
@@ -166,7 +168,7 @@ const nx=[...bSlots]; nx[i]=id; setBSlots(nx);
             const pickB = { B1:bSlots[0]!, B2:bSlots[1]!, B3:bSlots[2]! };
             props.onConfirm(pickA, pickB);
           }}>
-          Confirmar seleÁ„o
+          Confirmar sele√ß√£o
         </button>
       </div>
     </div>
@@ -207,18 +209,18 @@ function EnergyChips({pool}:{pool:Record<string,number>}) {
     </div>
   );
 }export default function App(){
-  // === Õcones por personagem ===
+  // === √çcones por personagem ===
   const CHAR_ICON: Record<CharacterId, string> = {
     A:"???", B:"???", C:"??", D:"??", E:"??", F:"?"
   };
   const charIcon = (id: CharacterId) => CHAR_ICON[id] ?? "??";
 
-  // === helpers visuais mÌnimos (n„o alteram layout) ===
+  // === helpers visuais m√≠nimos (n√£o alteram layout) ===
   const ENERGY_COLORS = { AZUL:"#3b82f6", VERMELHO:"#ef4444", VERDE:"#22c55e", BRANCO:"#e5e7eb", PRETA:"#111827" } as const;
 
   const icon = (sk: ActiveSkill) => {
     const k = sk.effects?.[0]?.kind;
-    return k==="DANO"?"??":k==="ESCUDO"?"???":k==="STUN"?"??":k==="SILENCE"?"??":k==="DOT"?"??":k==="HOT"?"?":k==="MARCACAO"?"??":"??";
+    return k==="DANO"?"\u2694\uFE0F":k==="ESCUDO"?"\uD83D\uDEE1\uFE0F":k==="STUN"?"\uD83D\uDCAB":k==="SILENCE"?"\uD83E\uDD10":k==="DOT"?"\uD83D\uDD25":k==="HOT"?"\u2728":k==="MARCACAO"?"\uD83C\uDFAF":"\uD83E\uDDE9";
   };
 
   const EnergyView = (pool: Record<"AZUL"|"VERMELHO"|"VERDE"|"BRANCO"|"PRETA", number>) => (
@@ -271,7 +273,7 @@ function EnergyChips({pool}:{pool:Record<string,number>}) {
           setQueue([]);
           setPending(null);
           pushLog("?? Timeout: fila descartada. Passando a vez...");
-          doEndTurn(true); // reinicia timer prÛximo turno
+          doEndTurn(true); // reinicia timer pr√≥ximo turno
           return 60;
         }
         return t - 1;
@@ -281,19 +283,19 @@ function EnergyChips({pool}:{pool:Record<string,number>}) {
 
   function pushLog(s:string){ setLog(l=>[...l, `[${new Date().toLocaleTimeString()}] ${s}`]); }
 
-  // === Enfileirar aÁ„o: toggle para cancelar a mesma skill; buffs (ALLY) escolhem aliado ===
+  // === Enfileirar a√ß√£o: toggle para cancelar a mesma skill; buffs (ALLY) escolhem aliado ===
   function enqueue(slot:SlotId, sk:ActiveSkill){
     if (!state) return;
     const actorTeam = (slot.startsWith("A") ? "A" : "B") as TeamId;
     if (actorTeam !== state.activeTeamId) return;
 
     // Limites: 3 por turno / 1 por personagem
-    if (queue.length >= 3) { pushLog("?? Limite atingido: no m·ximo 3 aÁıes por turno."); return; }
+    if (queue.length >= 3) { pushLog("?? Limite atingido: no m√°ximo 3 a√ß√µes por turno."); return; }
     const actsByThis = queue.filter(a=>a.actorId===slot).length;
 const existingByThisIdx = queue.findIndex(a=>a.actorId===slot && a.skillId===sk.id);
-if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`?? ${slot} j· tem 1 aÁ„o na fila.`); return; }
+if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`?? ${slot} j√° tem 1 a√ß√£o na fila.`); return; }
 
-    // Toggle: clicar de novo na mesma skill cancela seleÁ„o
+    // Toggle: clicar de novo na mesma skill cancela sele√ß√£o
     if (pending && pending.actorId===slot && pending.skill.id===sk.id) {
       setPending(null);
       pushLog(`? ${slot} cancelou ${sk.name}`);
@@ -328,7 +330,7 @@ if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`?? ${slot} j· tem 1 aÁ„
   return;
 }
 
-    // SeleÁ„o de alvo (ALLY => aliados; ENEMY => inimigos)
+    // Sele√ß√£o de alvo (ALLY => aliados; ENEMY => inimigos)
     const targetTeam = (sk.target === "ALLY") ? actorTeam : (actorTeam==="A"?"B":"A");
     setPending({ actorTeam, actorId:slot, skill:sk, targetTeam });
     pushLog(`${slot} selecionando alvo para ${sk.name} (${sk.target})`);
@@ -345,7 +347,7 @@ if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`?? ${slot} j· tem 1 aÁ„
 
   function confirmTurn(){
     if (!state) return;
-    if (queue.length === 0) { pushLog("Nada na fila. Passe a vez ou adicione aÁıes."); return; }
+    if (queue.length === 0) { pushLog("Nada na fila. Passe a vez ou adicione a√ß√µes."); return; }
 
     const allA: ActiveSkill[] = (Object.values(picksA??{}) as CharacterId[]).flatMap(cid=>CHAR_KITS[cid].kit);
     const allB: ActiveSkill[] = (Object.values(picksB??{}) as CharacterId[]).flatMap(cid=>CHAR_KITS[cid].kit);
@@ -361,7 +363,7 @@ if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`?? ${slot} j· tem 1 aÁ„
     setQueue([]);
     engine.endTurn(state);
     engine.startTurn(state);
-    pushLog(`Vez do time ${state.activeTeamId}: +3 energias aleatÛrias`);
+    pushLog(`Vez do time ${state.activeTeamId}: +3 energias aleat√≥rias`);
     setState({ ...state });
     if (reset) { setTurnTimer(60); resetTimer(); }
   }
@@ -369,7 +371,7 @@ if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`?? ${slot} j· tem 1 aÁ„
   if (!picksA || !picksB) {
     return <SelectScreen onConfirm={(A,B)=>startBattle(A,B)} />;
   }
-  if (!state) return <div style={pageWrap}>CarregandoÖ</div>;
+  if (!state) return <div style={pageWrap}>Carregando‚Ä¶</div>;
 
   const idsA: SlotId[] = ["A1","A2","A3"];
   const idsB: SlotId[] = ["B1","B2","B3"];
@@ -396,7 +398,7 @@ if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`?? ${slot} j· tem 1 aÁ„
               ? <div style={{display:"flex", gap:6, flexWrap:"wrap", marginTop:6}}>
                   {ch.effects.map((e:any,idx:number)=>(
                     <span key={idx} style={{border:"1px solid #e5e7eb", borderRadius:999, padding:"2px 6px", fontSize:11, background:"#fff"}}>
-                      {e.kind}{e.value?`(${e.value})`:""} ∑ {e.duration}T
+                      {e.kind}{e.value?`(${e.value})`:""} ¬∑ {e.duration}T
                     </span>
                   ))}
                 </div>
@@ -414,8 +416,8 @@ if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`?? ${slot} j· tem 1 aÁ„
               >
                 <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8}}>
                   <div style={{display:"flex", gap:8, alignItems:"center"}}>
-                    <strong>{team}:{slot}</strong>
-                    <span style={small}>{charIcon(cid)} {charIcon(cid)} {cid} ï {CHAR_KITS[cid].name}</span>
+                    <strong>{CHAR_KITS[cid]?.name ?? slot}</strong>
+                    <span style={small}>{charIcon(cid)} {charIcon(cid)} {cid} ‚Ä¢ {CHAR_KITS[cid].name}</span>
                   </div>
                   <div style={small}>HP {ch.hp} (+{ch.shield} esc)</div>
                 </div>
@@ -456,7 +458,7 @@ const disabled = !canAct || stunned || blockedBySilence || (!!pending && !isPend
 
   return (
     <div style={pageWrap}>
-      <h1 style={h1}>Arena Multiverso ó MVP</h1>
+      <h1 style={h1}>Arena Multiverso ‚Äî MVP</h1>
       <div style={{...bar, justifyContent:"space-between"}}>
         <div style={{display:"flex", gap:8, alignItems:"center"}}>
           <button style={btn} onClick={()=>{ setLog([]); }}>Limpar Log</button>
@@ -473,7 +475,7 @@ const disabled = !canAct || stunned || blockedBySilence || (!!pending && !isPend
         {renderTeam("A","Time A")}
         <div>
           <div style={{...panel, marginBottom:16}}>
-            <div style={header}><strong>Fila de aÁıes</strong></div>
+            <div style={header}><strong>Fila de a√ß√µes</strong></div>
             <div style={bodyPad}>
               {queue.length===0 ? <div style={small}>Vazia</div> :
                 <ol style={{margin:0, paddingLeft:18}}>
@@ -516,6 +518,7 @@ const disabled = !canAct || stunned || blockedBySilence || (!!pending && !isPend
     </div>
   );
 }
+
 
 
 
