@@ -1,0 +1,12 @@
+﻿{
+  "name": "@arena/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "echo \"(placeholder) ts-node-dev src/index.ts\"",
+    "build": "echo \"(placeholder) tsc -p tsconfig.json\"",
+    "start": "echo \"(placeholder) node dist/index.js\""
+  }
+}

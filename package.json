@@ -1,0 +1,12 @@
+﻿{
+  "name": "loc-v0.1",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "workspaces": ["apps/*","packages/*"],
+  "scripts": {
+    "dev": "echo \"(placeholder) use: npm run dev -w apps/web & npm run dev -w apps/server\"",
+    "build": "echo \"(placeholder) builds virão nos próximos passos\"",
+    "lint": "echo \"(placeholder) lints virão nos próximos passos\""
+  }
+}
