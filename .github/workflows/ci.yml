@@ -1,0 +1,52 @@
+﻿name: CI — build engine + web
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'   # sem cache/lockfile
+
+      # ---- Engine ----
+      - name: Install TypeScript (engine)
+        run: npm i -D typescript@^5.6.3
+        working-directory: packages/engine
+
+      - name: Typecheck engine
+        run: npx tsc -p tsconfig.json --noEmit
+        working-directory: packages/engine
+
+      - name: Build engine
+        run: npx tsc -p tsconfig.json
+        working-directory: packages/engine
+
+      # ---- Web ----
+      - name: Install deps (web)
+        run: npm i
+        working-directory: apps/web
+
+      - name: Build web (Vite)
+        env:
+          BASE_PATH: /${{ github.event.repository.name }}/
+        run: npm run build
+        working-directory: apps/web
+
+      - name: Upload dist as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: apps/web/dist
