@@ -75,6 +75,12 @@ export default function App() {
   const [pickSlotA, setPickSlotA] = useState<SlotIdA>("A1")
   const [pickSlotB, setPickSlotB] = useState<SlotIdB>("B1")
 
+  /** Mapeamento final dos picks para usar na batalha (skills corretas por slot) */
+  const [picks, setPicks] = useState<{
+    A: Record<SlotIdA, CharacterId>,
+    B: Record<SlotIdB, CharacterId>
+  } | null>(null)
+
   /** BATALHA */
   const [state, setState] = useState<BattleState | null>(null)
   const [queue, setQueue] = useState<QA[]>([])
@@ -132,16 +138,15 @@ export default function App() {
   }
   function confirmTeams(){
     if(!canConfirmTeams()) return
-    // cria estado inicial com os escolhidos
     const Aids = Object.keys(teamA.slots) as SlotIdA[]
     const Bids = Object.keys(teamB.slots) as SlotIdB[]
     // HP base simples para demonstração
     const hpOf = (cid:CharacterId|null)=> {
       switch(cid){
-        case "D": return 1300 // Defensor tank
+        case "D": return 1300 // Tank
         case "B": return 1100 // Lutador
         case "A": return 900  // Mago
-        case "E": return 900  // Assassina/DoT
+        case "E": return 900  // DoT
         case "F": return 950  // Controle
         case "C": return 1000 // Suporte
         default: return 1000
@@ -152,12 +157,12 @@ export default function App() {
       activeTeamId: "A",
       teams: {
         A: { id:"A",
-             characters: Aids.map((slot,idx)=> toRuntime(slot, hpOf(teamA.slots[slot])) ),
+             characters: Aids.map(slot=> toRuntime(slot, hpOf(teamA.slots[slot])) ),
              items: [],
              energy: emptyEnergy()
         },
         B: { id:"B",
-             characters: Bids.map((slot,idx)=> toRuntime(slot, hpOf(teamB.slots[slot])) ),
+             characters: Bids.map(slot=> toRuntime(slot, hpOf(teamB.slots[slot])) ),
              items: [],
              energy: emptyEnergy()
         },
@@ -166,6 +171,7 @@ export default function App() {
     }
     engine.startMatch(s)
     setState({...s})
+    setPicks({ A: teamA.slots as any, B: teamB.slots as any })
     setLookup(buildLookupFromPicks(teamA.slots as any, teamB.slots as any))
     setQueue([])
     setLog([`Times confirmados: A(${Aids.map(x=>teamA.slots[x]).join(",")}) vs B(${Bids.map(x=>teamB.slots[x]).join(",")})`,
@@ -286,40 +292,13 @@ export default function App() {
     )
   }
 
-  // --------- TELA DE BATALHA (reaproveita UI anterior, com lookup dinâmico) ----------
+  // --------- TELA DE BATALHA — LAYOUT VERTICAL POR TIME (igual à seleção) ----------
   const hpA = state?.teams.A.characters.map(c=>`${c.id}:${c.hp}(+${c.shield} esc)`).join("  ") ?? "-"
   const hpB = state?.teams.B.characters.map(c=>`${c.id}:${c.hp}(+${c.shield} esc)`).join("  ") ?? "-"
   const mm = String(Math.floor(remaining/60)).padStart(2,"0")
   const ss = String(remaining%60).padStart(2,"0")
   const canActA = state?.activeTeamId === "A"
   const canActB = state?.activeTeamId === "B"
-
-  function actButtons(team:TeamId){
-    if(!state) return null
-    const chars = state.teams[team].characters
-    return (
-      <div style={{display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:8}}>
-        {chars.map(ch=>{
-          // skills do personagem escolhido (por letra) — pega por prefixo do id do slot
-          const letter = (ch.id[0] as "A"|"B") // slot A1->A, B2->B; mapeamos por time *para demo rápida*
-          // Para fidelidade, usamos catálogo dos picks originais:
-          const fromCatalog = CHAR_KITS[ (letter as any) as CharacterId ]?.kit ?? []
-          return (
-            <div key={ch.id} style={card}>
-              <div style={{fontWeight:800, marginBottom:6}}>{team}:{ch.id}</div>
-              <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:6}}>
-                {fromCatalog.map(sk=>
-                  <button key={sk.id} onClick={()=>queueAction(team, ch.id, sk.id)} style={btnSmall}>
-                    {sk.name}
-                  </button>
-                )}
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    )
-  }
 
   return (
     <div style={{ fontFamily:"system-ui, sans-serif", padding:16, color:"#111" }}>
@@ -336,17 +315,25 @@ export default function App() {
         <button onClick={()=>setLog([])} style={btnAlt}>Limpar Console</button>
       </div>
 
-      {state && (
+      {state && picks && (
         <>
           <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, alignItems:"start"}}>
-            <div style={{...card, borderColor: canActA?"#16a34a":"#ddd"}}>
-              <div style={{fontWeight:900, marginBottom:6}}>Time A {canActA && <span style={{color:"#16a34a"}}>• Turno</span>}</div>
-              {actButtons("A")}
-            </div>
-            <div style={{...card, borderColor: canActB?"#16a34a":"#ddd"}}>
-              <div style={{fontWeight:900, marginBottom:6}}>Time B {canActB && <span style={{color:"#16a34a"}}>• Turno</span>}</div>
-              {actButtons("B")}
-            </div>
+            <BattleTeamPanel
+              title="Time A"
+              team="A"
+              canAct={canActA}
+              state={state}
+              picks={picks}
+              onAction={(slot, skillId)=> queueAction("A", slot, skillId)}
+            />
+            <BattleTeamPanel
+              title="Time B"
+              team="B"
+              canAct={canActB}
+              state={state}
+              picks={picks}
+              onAction={(slot, skillId)=> queueAction("B", slot, skillId)}
+            />
 
             <div style={{ gridColumn:"1 / span 2", ...card, borderStyle:"dashed" }}>
               <div><strong>Turno:</strong> {state.turnNumber} • <strong>Ativo:</strong> {state.activeTeamId}</div>
@@ -378,7 +365,7 @@ export default function App() {
   )
 }
 
-/** ---------- Componentes da TELA DE SELEÇÃO ---------- */
+/** ---------- Componentes ---------- */
 
 function TeamPickPanel(props:{
   title:string
@@ -394,7 +381,7 @@ function TeamPickPanel(props:{
         <strong>{props.title}</strong>
       </div>
       <div style={{padding:12, display:"grid", gap:10}}>
-        {ids.map((slot,i)=>{
+        {ids.map((slot)=>{
           const isSel = props.pickSlot===slot
           const cid = props.slots[slot as keyof typeof props.slots]
           return (
@@ -413,6 +400,50 @@ function TeamPickPanel(props:{
                   {cid ? CHAR_KITS[cid].kit.map(k=><span key={k.id} style={pill}>{k.name}</span>) : null}
                 </div>
               </button>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/** Painel vertical por time para a TELA DE BATALHA */
+function BattleTeamPanel(props:{
+  title:string
+  team: TeamId
+  canAct: boolean
+  state: BattleState
+  picks: { A: Record<SlotIdA, CharacterId>, B: Record<SlotIdB, CharacterId> }
+  onAction: (slotId: string, skillId: string)=>void
+}){
+  const ids = props.team==="A" ? (["A1","A2","A3"] as const) : (["B1","B2","B3"] as const)
+  return (
+    <div style={{...formationWrap, borderColor: props.canAct ? "#16a34a" : "#e5e7eb"}}>
+      <div style={formationHeader}>
+        <strong>{props.title}</strong> {props.canAct ? <span style={{ color:"#16a34a", fontWeight:700 }}>• Turno</span> : <span style={{ color:"#64748b" }}>• Aguardando</span>}
+      </div>
+      <div style={{padding:12, display:"grid", gap:10}}>
+        {ids.map((slot)=>{
+          const ch = props.state.teams[props.team].characters.find(c=>c.id===slot)!
+          const cid = props.team==="A" ? props.picks.A[slot as SlotIdA] : props.picks.B[slot as SlotIdB]
+          const kit = CHAR_KITS[cid].kit
+          return (
+            <div key={slot} style={{...slotBtn, width:"100%", textAlign:"left"}}>
+              <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:6}}>
+                <div style={{display:"flex", gap:8, alignItems:"center"}}>
+                  <div style={{fontWeight:800}}>{props.team}:{slot}</div>
+                  <div style={{opacity:.7}}>{cid} — {CHAR_KITS[cid].name}</div>
+                </div>
+                <div style={{fontSize:12, opacity:.7}}>HP {ch.hp} (+{ch.shield} esc)</div>
+              </div>
+              <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:6}}>
+                {kit.map(sk=>
+                  <button key={sk.id} onClick={()=>props.onAction(slot, sk.id)} style={{...btnSmall, opacity: props.canAct ? 1 : .6}} disabled={!props.canAct}>
+                    {sk.name}
+                  </button>
+                )}
+              </div>
             </div>
           )
         })}
