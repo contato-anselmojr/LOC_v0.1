@@ -416,7 +416,7 @@ if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`?? ${slot} já tem 1 a�
               >
                 <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8}}>
                   <div style={{display:"flex", gap:8, alignItems:"center"}}>
-                    <strong>{CHAR_KITS[cid]?.name ?? slot}</strong>
+                    {CHAR_KITS[cid]?.name ?? slot}
                     <span style={small}>{charIcon(cid)} {charIcon(cid)} {cid} • {CHAR_KITS[cid].name}</span>
                   </div>
                   <div style={small}>HP {ch.hp} (+{ch.shield} esc)</div>
@@ -518,6 +518,7 @@ const disabled = !canAct || stunned || blockedBySilence || (!!pending && !isPend
     </div>
   );
 }
+
 
 
 
