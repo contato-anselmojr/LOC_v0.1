@@ -74,7 +74,7 @@ export default function App() {
     setState({ ...s })
     setQueue([])
     setLog([`startMatch(): +1 energia para o time ${s.activeTeamId}`])
-    resetTimer(false) // inicia parado; usuário decide
+    resetTimer(true) // inicia parado; usuário decide
   }
 
   function queueAction(actorTeam: "A"|"B", actorId: string, skillId: string){
@@ -111,7 +111,7 @@ export default function App() {
     engine.startTurn(s);              addLog(`startTurn(): início do turno do time ${s.activeTeamId} ${s.turnNumber>=2 ? "(+3 energias)" : ""}`)
     setQueue([])
     setState({ ...s })
-    resetTimer(timerOn) // reseta mantendo estado (se estava rodando, continua)
+    resetTimer(true) // reseta mantendo estado (se estava rodando, continua)
   }
 
   function timeoutPass(fromTimer=false){
@@ -122,7 +122,7 @@ export default function App() {
     engine.startTurn(s);              addLog(`startTurn(): início do turno do time ${s.activeTeamId} ${s.turnNumber>=2 ? "(+3 energias)" : ""}`)
     setQueue([])
     setState({ ...s })
-    resetTimer(timerOn)
+    resetTimer(true)
   }
 
   // ————— SIMULAÇÕES ÚTEIS (sem comprometer o core) —————
@@ -180,7 +180,7 @@ export default function App() {
           ⏱️ Tempo: {mm}:{ss}
         </span>
         <button onClick={()=>setTimerOn(v=>!v)} style={btnAlt}>{timerOn ? "Pausar Timer" : "Iniciar Timer"}</button>
-        <button onClick={()=>resetTimer(timerOn)} style={btnAlt}>Resetar Timer</button>
+        <button onClick={()=>resetTimer(true)} style={btnAlt}>Resetar Timer</button>
 
         <button onClick={()=>setShowConsole(s=>!s)} style={btnAlt}>{showConsole ? "Ocultar Console" : "Mostrar Console"}</button>
         <button onClick={()=>setLog([])} style={btnAlt}>Limpar Console</button>
@@ -288,3 +288,4 @@ const consoleBody: React.CSSProperties = {
   fontSize:13,
   lineHeight:1.5
 }
+
