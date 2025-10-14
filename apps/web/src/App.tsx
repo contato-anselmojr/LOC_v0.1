@@ -403,7 +403,9 @@ function EnergyChips({pool}:{pool:Record<string,number>}) {
                     const stunned = ch.effects?.some((e:any)=>e.kind==="STUN" && e.duration>0);
                     const silenced = ch.effects?.some((e:any)=>e.kind==="SILENCE" && e.duration>0);
                     const blockedBySilence = silenced && sk.effects.some(e=>!["DANO","ESCUDO"].includes(e.kind));
-                    const disabled = !canAct || stunned || blockedBySilence || !!pending;
+                    const isPendingThis = !!pending && pending.actorId===slot && pending.skill.id===sk.id;
+const active = isPendingThis;
+const disabled = !canAct || stunned || blockedBySilence || (!!pending && !isPendingThis);
 
                     return (
                       <button
@@ -412,9 +414,9 @@ function EnergyChips({pool}:{pool:Record<string,number>}) {
                         onClick={(e)=>{ e.stopPropagation(); enqueue(slot, sk); }}
                         style={{
                           ...btn,
-                          background: disabled ? "#f1f5f9" : "#fff",
-                          color: disabled ? "#9ca3af" : "#111827",
-                          borderColor: disabled ? "#e5e7eb" : "#cbd5e1"
+                          background: active ? "#eef2ff" : (disabled ? "#f1f5f9" : "#fff"),
+                          color: active ? "#3730a3" : (disabled ? "#9ca3af" : "#111827"),
+                          borderColor: active ? "#6366f1" : (disabled ? "#e5e7eb" : "#cbd5e1")
                         }}
                       >{icon(sk)} {sk.name}</button>
                     );
@@ -492,6 +494,7 @@ function EnergyChips({pool}:{pool:Record<string,number>}) {
     </div>
   );
 }
+
 
 
 
