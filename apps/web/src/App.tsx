@@ -179,21 +179,28 @@ const ENERGY_META: Record<string,{label:string; icon:string; grad:string; border
   PRETA:{label:"Preta",icon:"⚫",grad:"linear-gradient(135deg,#e5e7eb,#cbd5e1)",border:"#94a3b8"},
 };
 function EnergyChips({pool}:{pool:Record<string,number>}) {
-  const wrap: React.CSSProperties = { display:"grid", gridTemplateColumns:"repeat(2,minmax(0,1fr))", gap:8 };
-  const chip: React.CSSProperties = { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 10px", borderRadius:12, fontWeight:700, border:"1px solid #e5e7eb", boxShadow:"0 1px 2px rgba(0,0,0,.06)" };
+  const stack: React.CSSProperties = { display:"grid", gap:10 };
+  const wrap: React.CSSProperties  = { display:"grid", gridTemplateColumns:"repeat(1,minmax(0,1fr))", gap:10 }; // 1 coluna => mais alto
+  const chip: React.CSSProperties  = { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 12px", borderRadius:12, fontWeight:700, border:"1px solid #e5e7eb", boxShadow:"0 1px 2px rgba(0,0,0,.06)" };
   const nameStyle: React.CSSProperties = { display:"flex", alignItems:"center", gap:8, fontWeight:700 };
+  const total = Object.values(pool as any).reduce((a:number,b:any)=>a + (Number(b)||0), 0);
   return (
-    <div style={wrap}>
-      {Object.entries(ENERGY_META).map(([k,m])=>(
-        <div key={k} style={{...chip, background:m.grad, borderColor:m.border}}>
-          <span style={nameStyle}><span aria-hidden>{m.icon}</span>{m.label}</span>
-          <span style={{fontVariantNumeric:"tabular-nums"}}>{(pool as any)[k] ?? 0}</span>
-        </div>
-      ))}
+    <div style={stack}>
+      <div style={wrap}>
+        {Object.entries(ENERGY_META).map(([k,m])=>(
+          <div key={k} style={{...chip, background:m.grad, borderColor:m.border}}>
+            <span style={nameStyle}><span aria-hidden>{m.icon}</span>{m.label}</span>
+            <span style={{fontVariantNumeric:"tabular-nums"}}>{(pool as any)[k] ?? 0}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{...chip, background:"linear-gradient(135deg,#fafaf9,#f5f5f4)", borderColor:"#d6d3d1"}}>
+        <span style={nameStyle}><span aria-hidden>Σ</span>Total</span>
+        <span style={{fontVariantNumeric:"tabular-nums"}}>{total}</span>
+      </div>
     </div>
   );
-}
-export default function App(){
+}export default function App(){
   // === Ícones por personagem ===
   const CHAR_ICON: Record<CharacterId, string> = {
     A:"🗡️", B:"🛡️", C:"🏹", D:"🔥", E:"❄️", F:"⚡"
@@ -485,6 +492,7 @@ export default function App(){
     </div>
   );
 }
+
 
 
 
