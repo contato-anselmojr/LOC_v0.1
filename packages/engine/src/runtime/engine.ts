@@ -7,7 +7,7 @@ export type QueuedAction = { actorTeam:"A"|"B"; actorId:string; skillId:string; 
 export class RuleEngine {
   constructor(private seed = 42) {}
   private next() { this.seed = (this.seed ^ (this.seed << 13)) ^ (this.seed >>> 17) ^ (this.seed << 5); return ((this.seed >>> 0) % 1000000) / 1000000; }
-  private pick<T>(arr: readonly T[]): T { const i = Math.floor(this.next() * arr.length); return arr[i]; }
+  private pick<T>(arr: readonly T[]): T { if (arr.length===0) throw new Error("pick() empty"); const i = Math.floor(this.next() * arr.length); return arr[i]!; } // <-- FIX
 
   startMatch(state: BattleState) {
     state.turnNumber = 1;
