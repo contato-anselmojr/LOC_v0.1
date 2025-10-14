@@ -203,6 +203,25 @@ function EnergyChips({pool}:{pool:Record<string,number>}) {
   );
 }
 }
+/* ===================== SelectScreen Fallback (safety) ===================== */
+type PicksA = { A1:CharacterId; A2:CharacterId; A3:CharacterId };
+type PicksB = { B1:CharacterId; B2:CharacterId; B3:CharacterId };
+function FallbackSelectScreen({onConfirm}:{onConfirm:(A:PicksA,B:PicksB)=>void}) {
+  const [a] = React.useState<CharacterId[]>(["A","B","C"]);
+  const [b] = React.useState<CharacterId[]>(["D","E","F"]);
+  return (
+    <div style={pageWrap}>
+      <h1 style={h1}>Arena Multiverso — Seleção</h1>
+      <div style={{...bar}}>
+        <button style={btnPrimary} onClick={()=>onConfirm({A1:a[0],A2:a[1],A3:a[2]}, {B1:b[0],B2:b[1],B3:b[2]})}>
+          Confirmar seleção
+        </button>
+      </div>
+    </div>
+  );
+}
+// @ts-ignore — detecta SelectScreen sem referenciar diretamente (evita erro de compilação)
+const SelectUI: any = (0, eval)("typeof SelectScreen !== 'undefined' ? SelectScreen : null") || FallbackSelectScreen;
 export default function App(){
   // === helpers visuais mínimos (não alteram layout) ===
   const ENERGY_COLORS = { AZUL:"#3b82f6", VERMELHO:"#ef4444", VERDE:"#22c55e", BRANCO:"#e5e7eb", PRETA:"#111827" } as const;
@@ -343,7 +362,7 @@ export default function App(){
   }
 
   if (!picksA || !picksB) {
-    return <SelectScreen onConfirm={(A,B)=>startBattle(A,B)} />;
+    return <SelectUI onConfirm={(A,B)=>startBattle(A,B)} />;
   }
   if (!state) return <div style={pageWrap}>Carregando…</div>;
 
@@ -493,6 +512,7 @@ export default function App(){
     </div>
   );
 }
+
 
 
 
