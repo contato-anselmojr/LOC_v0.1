@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { RuleEngine, type BattleState, type ActiveSkill, emptyEnergy } from "@arena/engine";
 
 /* ===================== Tipos ===================== */
@@ -19,7 +19,7 @@ const bodyPad: React.CSSProperties = { padding:12 };
 const slotBtn: React.CSSProperties = { border:"1px solid #e5e7eb", borderRadius:12, padding:10, background:"#fff" };
 const small: React.CSSProperties = { fontSize:12, opacity:.7 };
 
-/* ===================== Catálogo ===================== */
+/* ===================== Cat�logo ===================== */
 function mkSkill(id:string, name:string, target:TargetTeam, effects:ActiveSkill["effects"], cost:ActiveSkill["cost"]): ActiveSkill {
   return { id, name, cooldown:1, target, effects, cost };
 }
@@ -33,7 +33,7 @@ const KIT_B: ActiveSkill[] = [
   mkSkill("b_1", "Golpe", "ENEMY", [{kind:"DANO", value:250}], { VERMELHO:1 }),
   mkSkill("b_2", "Guarda", "SELF", [{kind:"ESCUDO", value:300}], { VERDE:1 }),
   mkSkill("b_3", "Silenciar", "ENEMY", [{kind:"SILENCE", duration:1}], { BRANCO:1 }),
-  mkSkill("b_4", "Bênção", "ALLY", [{kind:"HOT", value:80, duration:2}], { VERDE:1 }),
+  mkSkill("b_4", "B�n��o", "ALLY", [{kind:"HOT", value:80, duration:2}], { VERDE:1 }),
 ];
 const KIT_C: ActiveSkill[] = [
   mkSkill("c_1", "Flecha", "ENEMY", [{kind:"DANO", value:250}], { VERMELHO:1 }),
@@ -44,13 +44,13 @@ const KIT_C: ActiveSkill[] = [
 const KIT_F = KIT_A, KIT_G = KIT_B, KIT_H = KIT_C, KIT_I = KIT_A;
 const KIT_D: ActiveSkill[] = [
   mkSkill("d_1", "Impacto",    "ENEMY", [{kind:"DANO",   value:250}], { VERMELHO:1 }),
-  mkSkill("d_2", "Proteção",   "SELF",  [{kind:"ESCUDO", value:300}], { AZUL:1 }),
+  mkSkill("d_2", "Prote��o",   "SELF",  [{kind:"ESCUDO", value:300}], { AZUL:1 }),
   mkSkill("d_3", "Calar Voz",  "ENEMY", [{kind:"SILENCE",duration:1}], { BRANCO:1 }),
   mkSkill("d_4", "Chama",      "ENEMY", [{kind:"DOT",    value:80, duration:2}], { VERMELHO:1 }),
 ];
 const KIT_E: ActiveSkill[] = [
-  mkSkill("e_1", "Lâmina",     "ENEMY", [{kind:"DANO",   value:250}], { VERDE:1 }),
-  mkSkill("e_2", "Bênção",     "ALLY",  [{kind:"HOT",    value:80, duration:2}], { VERDE:1 }),
+  mkSkill("e_1", "L�mina",     "ENEMY", [{kind:"DANO",   value:250}], { VERDE:1 }),
+  mkSkill("e_2", "B�n��o",     "ALLY",  [{kind:"HOT",    value:80, duration:2}], { VERDE:1 }),
   mkSkill("e_3", "Atordoar",   "ENEMY", [{kind:"STUN",   duration:1}], { BRANCO:1 }),
   mkSkill("e_4", "Barreira",   "ALLY",  [{kind:"ESCUDO", value:250}], { AZUL:1 }),
 ];
@@ -62,7 +62,7 @@ const CHAR_KITS: Record<CharacterId, { name: string; kit: ActiveSkill[] }> = {
 // @ts-ignore
 (window as any).CHAR_KITS = CHAR_KITS;
 
-/* ===================== Seleção ===================== */
+/* ===================== Sele��o ===================== */
 function SelectScreen(props:{
   onConfirm: (picksA:Record<"A1"|"A2"|"A3",CharacterId>, picksB:Record<"B1"|"B2"|"B3",CharacterId>)=>void
 }){
@@ -72,13 +72,19 @@ function SelectScreen(props:{
 
   const put = (team:"A"|"B", id:CharacterId)=>{
     if (team==="A"){
-      if (aSlots.includes(id)) return;
-      const i=aSlots.findIndex(x=>x===null); if(i<0) return;
-      const nx=[...aSlots]; nx[i]=id; setASlots(nx);
+      if (aSlots.includes(id)) {
+  const j = aSlots.findIndex(x=>x===id); if (j>=0) { const nx=[...aSlots]; nx[j]=null; setASlots(nx); }
+  return;
+}
+const i=aSlots.findIndex(x=>x===null); if(i<0) return;
+const nx=[...aSlots]; nx[i]=id; setASlots(nx);
     } else {
-      if (bSlots.includes(id)) return;
-      const i=bSlots.findIndex(x=>x===null); if(i<0) return;
-      const nx=[...bSlots]; nx[i]=id; setBSlots(nx);
+      if (bSlots.includes(id)) {
+  const j = bSlots.findIndex(x=>x===id); if (j>=0) { const nx=[...bSlots]; nx[j]=null; setBSlots(nx); }
+  return;
+}
+const i=bSlots.findIndex(x=>x===null); if(i<0) return;
+const nx=[...bSlots]; nx[i]=id; setBSlots(nx);
     }
   };
   const rem = (team:"A"|"B", idx:number)=>{
@@ -94,19 +100,19 @@ function SelectScreen(props:{
 
   return (
     <div style={pageWrap}>
-      <h1 style={h1}>Arena Multiverso — Seleção</h1>
+      <h1 style={h1}>Arena Multiverso � Sele��o</h1>
       <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:16}}>
         <div style={panel}>
-          <div style={header}><strong>Time A</strong><span style={small}>Clique no catálogo para preencher 3 slots</span></div>
+          <div style={header}><strong>Time A</strong><span style={small}>Clique no cat�logo para preencher 3 slots</span></div>
           <div style={{padding:12, display:"grid", gap:12}}>
             <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8}}>
               {aSlots.map((cid,idx)=>(
                 <div key={idx} style={barSlotStyle}>
                   <div style={{display:"flex",flexDirection:"column"}}>
                     <strong>A{idx+1}</strong>
-                    <span style={small}>{cid?`${cid} • ${CHAR_KITS[cid].name}`:"— vazio —"}</span>
+                    <span style={small}>{cid?`${cid} � ${CHAR_KITS[cid].name}`:"� vazio �"}</span>
                   </div>
-                  {cid && <button style={faceBtn} onClick={()=>rem("A",idx)}>Remover</button>}
+                  {cid && <button style={{...faceBtn, color:"#ef4444"}} onClick={()=>rem("A",idx)}>Remover</button>}
                 </div>
               ))}
             </div>
@@ -114,9 +120,9 @@ function SelectScreen(props:{
               {all.map(id=>(
                 <button key={id}
                         style={{...faceBtn, background: aSlots.includes(id)?"#111827":"#fff", color:aSlots.includes(id)?"#fff":"#111827"}}
-                        disabled={aSlots.includes(id)}
+                        
                         onClick={()=>put("A",id)}>
-                  {id} • {CHAR_KITS[id].name}
+                  {id} � {CHAR_KITS[id].name}
                 </button>
               ))}
             </div>
@@ -124,16 +130,16 @@ function SelectScreen(props:{
         </div>
 
         <div style={panel}>
-          <div style={header}><strong>Time B</strong><span style={small}>Clique no catálogo para preencher 3 slots</span></div>
+          <div style={header}><strong>Time B</strong><span style={small}>Clique no cat�logo para preencher 3 slots</span></div>
           <div style={{padding:12, display:"grid", gap:12}}>
             <div style={{display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:8}}>
               {bSlots.map((cid,idx)=>(
                 <div key={idx} style={barSlotStyle}>
                   <div style={{display:"flex",flexDirection:"column"}}>
                     <strong>B{idx+1}</strong>
-                    <span style={small}>{cid?`${cid} • ${CHAR_KITS[cid].name}`:"— vazio —"}</span>
+                    <span style={small}>{cid?`${cid} � ${CHAR_KITS[cid].name}`:"� vazio �"}</span>
                   </div>
-                  {cid && <button style={faceBtn} onClick={()=>rem("B",idx)}>Remover</button>}
+                  {cid && <button style={{...faceBtn, color:"#ef4444"}} onClick={()=>rem("B",idx)}>Remover</button>}
                 </div>
               ))}
             </div>
@@ -141,9 +147,9 @@ function SelectScreen(props:{
               {all.map(id=>(
                 <button key={id}
                         style={{...faceBtn, background: bSlots.includes(id)?"#111827":"#fff", color:bSlots.includes(id)?"#fff":"#111827"}}
-                        disabled={bSlots.includes(id)}
+                        
                         onClick={()=>put("B",id)}>
-                  {id} • {CHAR_KITS[id].name}
+                  {id} � {CHAR_KITS[id].name}
                 </button>
               ))}
             </div>
@@ -152,7 +158,7 @@ function SelectScreen(props:{
       </div>
 
       <div style={{...bar, justifyContent:"space-between"}}>
-        <div style={small}>Oponente pode repetir os mesmos personagens (sem restrição entre times).</div>
+        <div style={small}>Oponente pode repetir os mesmos personagens (sem restri��o entre times).</div>
         <button
           style={{...btnPrimary, opacity:(fullA&&fullB)?1:.5, pointerEvents:(fullA&&fullB)?"auto":"none"}}
           onClick={()=>{
@@ -160,7 +166,7 @@ function SelectScreen(props:{
             const pickB = { B1:bSlots[0]!, B2:bSlots[1]!, B3:bSlots[2]! };
             props.onConfirm(pickA, pickB);
           }}>
-          Confirmar seleção
+          Confirmar sele��o
         </button>
       </div>
     </div>
@@ -172,11 +178,11 @@ type Pending = { actorTeam:TeamId; actorId:SlotId; skill:ActiveSkill; targetTeam
 
 /* ===================== UI: EnergyChips ===================== */
 const ENERGY_META: Record<string,{label:string; icon:string; grad:string; border:string}> = {
-  AZUL:{label:"Azul",icon:"🔵",grad:"linear-gradient(135deg,#eff6ff,#dbeafe)",border:"#93c5fd"},
-  VERMELHO:{label:"Vermelho",icon:"🔴",grad:"linear-gradient(135deg,#fef2f2,#fee2e2)",border:"#fca5a5"},
-  VERDE:{label:"Verde",icon:"🟢",grad:"linear-gradient(135deg,#ecfdf5,#d1fae5)",border:"#6ee7b7"},
-  BRANCO:{label:"Branco",icon:"⚪",grad:"linear-gradient(135deg,#f8fafc,#f1f5f9)",border:"#cbd5e1"},
-  PRETA:{label:"Preta",icon:"⚫",grad:"linear-gradient(135deg,#e5e7eb,#cbd5e1)",border:"#94a3b8"},
+  AZUL:{label:"Azul",icon:"??",grad:"linear-gradient(135deg,#eff6ff,#dbeafe)",border:"#93c5fd"},
+  VERMELHO:{label:"Vermelho",icon:"??",grad:"linear-gradient(135deg,#fef2f2,#fee2e2)",border:"#fca5a5"},
+  VERDE:{label:"Verde",icon:"??",grad:"linear-gradient(135deg,#ecfdf5,#d1fae5)",border:"#6ee7b7"},
+  BRANCO:{label:"Branco",icon:"?",grad:"linear-gradient(135deg,#f8fafc,#f1f5f9)",border:"#cbd5e1"},
+  PRETA:{label:"Preta",icon:"?",grad:"linear-gradient(135deg,#e5e7eb,#cbd5e1)",border:"#94a3b8"},
 };
 function EnergyChips({pool}:{pool:Record<string,number>}) {
   const stack: React.CSSProperties = { display:"grid", gap:10 };
@@ -195,24 +201,24 @@ function EnergyChips({pool}:{pool:Record<string,number>}) {
         ))}
       </div>
       <div style={{...chip, background:"linear-gradient(135deg,#fafaf9,#f5f5f4)", borderColor:"#d6d3d1"}}>
-        <span style={nameStyle}><span aria-hidden>Σ</span>Total</span>
+        <span style={nameStyle}><span aria-hidden>S</span>Total</span>
         <span style={{fontVariantNumeric:"tabular-nums"}}>{total}</span>
       </div>
     </div>
   );
 }export default function App(){
-  // === Ícones por personagem ===
+  // === �cones por personagem ===
   const CHAR_ICON: Record<CharacterId, string> = {
-    A:"🗡️", B:"🛡️", C:"🏹", D:"🔥", E:"❄️", F:"⚡"
+    A:"???", B:"???", C:"??", D:"??", E:"??", F:"?"
   };
-  const charIcon = (id: CharacterId) => CHAR_ICON[id] ?? "🧩";
+  const charIcon = (id: CharacterId) => CHAR_ICON[id] ?? "??";
 
-  // === helpers visuais mínimos (não alteram layout) ===
+  // === helpers visuais m�nimos (n�o alteram layout) ===
   const ENERGY_COLORS = { AZUL:"#3b82f6", VERMELHO:"#ef4444", VERDE:"#22c55e", BRANCO:"#e5e7eb", PRETA:"#111827" } as const;
 
   const icon = (sk: ActiveSkill) => {
     const k = sk.effects?.[0]?.kind;
-    return k==="DANO"?"⚔️":k==="ESCUDO"?"🛡️":k==="STUN"?"💫":k==="SILENCE"?"🤐":k==="DOT"?"🔥":k==="HOT"?"✨":k==="MARCACAO"?"🎯":"🧩";
+    return k==="DANO"?"??":k==="ESCUDO"?"???":k==="STUN"?"??":k==="SILENCE"?"??":k==="DOT"?"??":k==="HOT"?"?":k==="MARCACAO"?"??":"??";
   };
 
   const EnergyView = (pool: Record<"AZUL"|"VERMELHO"|"VERDE"|"BRANCO"|"PRETA", number>) => (
@@ -264,8 +270,8 @@ function EnergyChips({pool}:{pool:Record<string,number>}) {
           clearInterval(timerRef.current);
           setQueue([]);
           setPending(null);
-          pushLog("⏲️ Timeout: fila descartada. Passando a vez...");
-          doEndTurn(true); // reinicia timer próximo turno
+          pushLog("?? Timeout: fila descartada. Passando a vez...");
+          doEndTurn(true); // reinicia timer pr�ximo turno
           return 60;
         }
         return t - 1;
@@ -275,22 +281,22 @@ function EnergyChips({pool}:{pool:Record<string,number>}) {
 
   function pushLog(s:string){ setLog(l=>[...l, `[${new Date().toLocaleTimeString()}] ${s}`]); }
 
-  // === Enfileirar ação: toggle para cancelar a mesma skill; buffs (ALLY) escolhem aliado ===
+  // === Enfileirar a��o: toggle para cancelar a mesma skill; buffs (ALLY) escolhem aliado ===
   function enqueue(slot:SlotId, sk:ActiveSkill){
     if (!state) return;
     const actorTeam = (slot.startsWith("A") ? "A" : "B") as TeamId;
     if (actorTeam !== state.activeTeamId) return;
 
     // Limites: 3 por turno / 1 por personagem
-    if (queue.length >= 3) { pushLog("⚠️ Limite atingido: no máximo 3 ações por turno."); return; }
+    if (queue.length >= 3) { pushLog("?? Limite atingido: no m�ximo 3 a��es por turno."); return; }
     const actsByThis = queue.filter(a=>a.actorId===slot).length;
 const existingByThisIdx = queue.findIndex(a=>a.actorId===slot && a.skillId===sk.id);
-if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`⚠️ ${slot} já tem 1 ação na fila.`); return; }
+if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`?? ${slot} j� tem 1 a��o na fila.`); return; }
 
-    // Toggle: clicar de novo na mesma skill cancela seleção
+    // Toggle: clicar de novo na mesma skill cancela sele��o
     if (pending && pending.actorId===slot && pending.skill.id===sk.id) {
       setPending(null);
-      pushLog(`❌ ${slot} cancelou ${sk.name}`);
+      pushLog(`? ${slot} cancelou ${sk.name}`);
       return;
     }
 
@@ -300,7 +306,7 @@ if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`⚠️ ${slot} já tem 
   if (existing >= 0) {
     setQueue(q=> q.filter((_,i)=> i!==existing));
     setPending(null);
-    pushLog(`❌ ${slot} cancelou ${sk.name}`);
+    pushLog(`? ${slot} cancelou ${sk.name}`);
   } else {
     setPending(null);
     setQueue(q=>[...q, { actorTeam, actorId:slot, skillId:sk.id, target:{ team: actorTeam, id: slot } }]);
@@ -313,7 +319,7 @@ if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`⚠️ ${slot} já tem 
   if (existing >= 0) {
     setQueue(q=> q.filter((_,i)=> i!==existing));
     setPending(null);
-    pushLog(`❌ ${slot} cancelou ${sk.name}`);
+    pushLog(`? ${slot} cancelou ${sk.name}`);
   } else {
     setPending(null);
     setQueue(q=>[...q, { actorTeam, actorId:slot, skillId:sk.id, target:{ team: actorTeam } }]);
@@ -322,7 +328,7 @@ if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`⚠️ ${slot} já tem 
   return;
 }
 
-    // Seleção de alvo (ALLY => aliados; ENEMY => inimigos)
+    // Sele��o de alvo (ALLY => aliados; ENEMY => inimigos)
     const targetTeam = (sk.target === "ALLY") ? actorTeam : (actorTeam==="A"?"B":"A");
     setPending({ actorTeam, actorId:slot, skill:sk, targetTeam });
     pushLog(`${slot} selecionando alvo para ${sk.name} (${sk.target})`);
@@ -339,7 +345,7 @@ if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`⚠️ ${slot} já tem 
 
   function confirmTurn(){
     if (!state) return;
-    if (queue.length === 0) { pushLog("Nada na fila. Passe a vez ou adicione ações."); return; }
+    if (queue.length === 0) { pushLog("Nada na fila. Passe a vez ou adicione a��es."); return; }
 
     const allA: ActiveSkill[] = (Object.values(picksA??{}) as CharacterId[]).flatMap(cid=>CHAR_KITS[cid].kit);
     const allB: ActiveSkill[] = (Object.values(picksB??{}) as CharacterId[]).flatMap(cid=>CHAR_KITS[cid].kit);
@@ -355,7 +361,7 @@ if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`⚠️ ${slot} já tem 
     setQueue([]);
     engine.endTurn(state);
     engine.startTurn(state);
-    pushLog(`Vez do time ${state.activeTeamId}: +3 energias aleatórias`);
+    pushLog(`Vez do time ${state.activeTeamId}: +3 energias aleat�rias`);
     setState({ ...state });
     if (reset) { setTurnTimer(60); resetTimer(); }
   }
@@ -363,7 +369,7 @@ if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`⚠️ ${slot} já tem 
   if (!picksA || !picksB) {
     return <SelectScreen onConfirm={(A,B)=>startBattle(A,B)} />;
   }
-  if (!state) return <div style={pageWrap}>Carregando…</div>;
+  if (!state) return <div style={pageWrap}>Carregando�</div>;
 
   const idsA: SlotId[] = ["A1","A2","A3"];
   const idsB: SlotId[] = ["B1","B2","B3"];
@@ -390,7 +396,7 @@ if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`⚠️ ${slot} já tem 
               ? <div style={{display:"flex", gap:6, flexWrap:"wrap", marginTop:6}}>
                   {ch.effects.map((e:any,idx:number)=>(
                     <span key={idx} style={{border:"1px solid #e5e7eb", borderRadius:999, padding:"2px 6px", fontSize:11, background:"#fff"}}>
-                      {e.kind}{e.value?`(${e.value})`:""} · {e.duration}T
+                      {e.kind}{e.value?`(${e.value})`:""} � {e.duration}T
                     </span>
                   ))}
                 </div>
@@ -409,7 +415,7 @@ if (actsByThis >= 1 && existingByThisIdx < 0) { pushLog(`⚠️ ${slot} já tem 
                 <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:8}}>
                   <div style={{display:"flex", gap:8, alignItems:"center"}}>
                     <strong>{team}:{slot}</strong>
-                    <span style={small}>{charIcon(cid)} {charIcon(cid)} {cid} • {CHAR_KITS[cid].name}</span>
+                    <span style={small}>{charIcon(cid)} {charIcon(cid)} {cid} � {CHAR_KITS[cid].name}</span>
                   </div>
                   <div style={small}>HP {ch.hp} (+{ch.shield} esc)</div>
                 </div>
@@ -450,7 +456,7 @@ const disabled = !canAct || stunned || blockedBySilence || (!!pending && !isPend
 
   return (
     <div style={pageWrap}>
-      <h1 style={h1}>Arena Multiverso — MVP</h1>
+      <h1 style={h1}>Arena Multiverso � MVP</h1>
       <div style={{...bar, justifyContent:"space-between"}}>
         <div style={{display:"flex", gap:8, alignItems:"center"}}>
           <button style={btn} onClick={()=>{ setLog([]); }}>Limpar Log</button>
@@ -467,13 +473,13 @@ const disabled = !canAct || stunned || blockedBySilence || (!!pending && !isPend
         {renderTeam("A","Time A")}
         <div>
           <div style={{...panel, marginBottom:16}}>
-            <div style={header}><strong>Fila de ações</strong></div>
+            <div style={header}><strong>Fila de a��es</strong></div>
             <div style={bodyPad}>
               {queue.length===0 ? <div style={small}>Vazia</div> :
                 <ol style={{margin:0, paddingLeft:18}}>
                   {queue.map((a,i)=>(
                     <li key={i} style={{marginBottom:4, fontSize:14}}>
-                      {a.actorId} → {a.skillId} {a.target?.id?`em ${a.target.id}`:`(${a.target?.team==="A"?"time A": "time B"})`}
+                      {a.actorId} ? {a.skillId} {a.target?.id?`em ${a.target.id}`:`(${a.target?.team==="A"?"time A": "time B"})`}
                     </li>
                   ))}
                 </ol>
