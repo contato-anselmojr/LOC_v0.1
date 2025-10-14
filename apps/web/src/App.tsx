@@ -2,7 +2,7 @@
 import { RuleEngine, type BattleState, type ActiveSkill, emptyEnergy } from "@arena/engine";
 
 /* ===================== Tipos ===================== */
-type CharacterId = "A"|"B"|"C"|"D"|"E"|"F";
+type CharacterId = "A"|"B"|"C"|"D"|"E"|"F"|"G"|"H"|"I";
 type SlotId = "A1"|"A2"|"A3"|"B1"|"B2"|"B3";
 type TeamId = "A"|"B";
 type TargetTeam = "ALLY"|"ENEMY"|"SELF"|"ALLY_TEAM";
@@ -41,6 +41,7 @@ const KIT_C: ActiveSkill[] = [
   mkSkill("c_3", "Atordoar", "ENEMY", [{kind:"STUN", duration:1}], { BRANCO:1 }),
   mkSkill("c_4", "Dreno", "ENEMY", [{kind:"DANO", value:200}], { PRETA:1 }),
 ];
+const KIT_F = KIT_A, KIT_G = KIT_B, KIT_H = KIT_C, KIT_I = KIT_A;
 const KIT_D: ActiveSkill[] = [
   mkSkill("d_1", "Impacto",    "ENEMY", [{kind:"DANO",   value:250}], { VERMELHO:1 }),
   mkSkill("d_2", "Proteção",   "SELF",  [{kind:"ESCUDO", value:300}], { AZUL:1 }),
@@ -54,11 +55,9 @@ const KIT_E: ActiveSkill[] = [
   mkSkill("e_4", "Barreira",   "ALLY",  [{kind:"ESCUDO", value:250}], { AZUL:1 }),
 ];
 const CHAR_KITS: Record<CharacterId, { name: string; kit: ActiveSkill[] }> = {
-  A: { name: "A", kit: KIT_A },
-  B: { name: "B", kit: KIT_B },
-  C: { name: "C", kit: KIT_C },
-  D: { name: "D", kit: KIT_D },
-  E: { name: "E", kit: KIT_E },
+  A:{name:"A",kit:KIT_A}, B:{name:"B",kit:KIT_B}, C:{name:"C",kit:KIT_C},
+  D:{name:"D",kit:KIT_D?KIT_D:KIT_A}, E:{name:"E",kit:KIT_E?KIT_E:KIT_B},
+  F:{name:"F",kit:KIT_F}, G:{name:"G",kit:KIT_G}, H:{name:"H",kit:KIT_H}, I:{name:"I",kit:KIT_I},
 };
 // @ts-ignore
 (window as any).CHAR_KITS = CHAR_KITS;
@@ -171,6 +170,29 @@ function SelectScreen(props:{
 /* ===================== Batalha ===================== */
 type Pending = { actorTeam:TeamId; actorId:SlotId; skill:ActiveSkill; targetTeam:TeamId } | null;
 
+/* ===================== UI: EnergyChips ===================== */
+const ENERGY_META: Record<string,{label:string; icon:string; grad:string; border:string}> = {
+  AZUL:{label:"Azul",icon:"🔵",grad:"linear-gradient(135deg,#eff6ff,#dbeafe)",border:"#93c5fd"},
+  VERMELHO:{label:"Vermelho",icon:"🔴",grad:"linear-gradient(135deg,#fef2f2,#fee2e2)",border:"#fca5a5"},
+  VERDE:{label:"Verde",icon:"🟢",grad:"linear-gradient(135deg,#ecfdf5,#d1fae5)",border:"#6ee7b7"},
+  BRANCO:{label:"Branco",icon:"⚪",grad:"linear-gradient(135deg,#f8fafc,#f1f5f9)",border:"#cbd5e1"},
+  PRETA:{label:"Preta",icon:"⚫",grad:"linear-gradient(135deg,#e5e7eb,#cbd5e1)",border:"#94a3b8"},
+};
+function EnergyChips({pool}:{pool:Record<string,number>}) {
+  const wrap: React.CSSProperties = { display:"grid", gridTemplateColumns:"repeat(2,minmax(0,1fr))", gap:8 };
+  const chip: React.CSSProperties = { display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 10px", borderRadius:12, fontWeight:700, border:"1px solid #e5e7eb", boxShadow:"0 1px 2px rgba(0,0,0,.06)" };
+  const nameStyle: React.CSSProperties = { display:"flex", alignItems:"center", gap:8, fontWeight:700 };
+  return (
+    <div style={wrap}>
+      {Object.entries(ENERGY_META).map(([k,m])=>(
+        <div key={k} style={{...chip, background:m.grad, borderColor:m.border}}>
+          <span style={nameStyle}><span aria-hidden>{m.icon}</span>{m.label}</span>
+          <span style={{fontVariantNumeric:"tabular-nums"}}>{(pool as any)[k] ?? 0}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 export default function App(){
   // === Ícones por personagem ===
   const CHAR_ICON: Record<CharacterId, string> = {
@@ -435,18 +457,14 @@ export default function App(){
           </div>
           <div style={panel}>
             <div style={header}><strong>Energia</strong></div>
-            <div style={{...bodyPad, display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, fontSize:13}}>
+            <div style={{...bodyPad, display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, fontSize:14}}>
               <div>
                 <div style={{fontWeight:700, marginBottom:6}}>A</div>
-                <pre style={{margin:0, background:"#f1f5f9", padding:8, borderRadius:8, border:"1px solid #e5e7eb"}}>
-{JSON.stringify(state.teams.A.energy, null, 2)}
-                </pre>
+                <EnergyChips pool={state.teams.A.energy} />
               </div>
               <div>
                 <div style={{fontWeight:700, marginBottom:6}}>B</div>
-                <pre style={{margin:0, background:"#f1f5f9", padding:8, borderRadius:8, border:"1px solid #e5e7eb"}}>
-{JSON.stringify(state.teams.B.energy, null, 2)}
-                </pre>
+                <EnergyChips pool={state.teams.B.energy} />
               </div>
             </div>
           </div>
@@ -467,6 +485,8 @@ export default function App(){
     </div>
   );
 }
+
+
 
 
 
