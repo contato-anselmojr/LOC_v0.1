@@ -16,7 +16,7 @@ type Screen = "SELECT" | "BATTLE"
 function S(id:string, name:string, cost:Partial<Record<"AZUL"|"VERMELHO"|"VERDE"|"BRANCO"|"PRETA",number>>, effects:ActiveSkill["effects"], target:ActiveSkill["target"]="ENEMY"): ActiveSkill {
   return { id, name, cost, cooldown:1, target, effects }
 }
-const CHAR_KITS: Record<CharacterId, { name:string; kit: ActiveSkill[] }> = {
+(window as any).CHAR_KITS = CHAR_KITS;\nconst CHAR_KITS: Record<CharacterId, { name:string; kit: ActiveSkill[] }> = {
   A: { name:"Arcana (Mago DPS)",
        kit: [
          S("A_as1","Raio", {AZUL:1}, [{kind:"DANO",value:250}], "ENEMY"),
@@ -553,3 +553,5 @@ const btnSmall: React.CSSProperties = { ...btn, padding:"6px 8px", fontSize:12 }
 const consoleWrap: React.CSSProperties = { marginTop:16, border:"1px solid #d1d5db", borderRadius:12, overflow:"hidden", background:"#111", color:"#e5e7eb", boxShadow:"0 1px 3px rgba(0,0,0,.1)" }
 const consoleHeader: React.CSSProperties = { padding:"8px 12px", fontWeight:700, background:"#0b0b0b", borderBottom:"1px solid #222" }
 const consoleBody: React.CSSProperties = { maxHeight:260, overflow:"auto", padding:"10px 12px", fontFamily:"ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", fontSize:13, lineHeight:1.5 }
+
+
