@@ -7,7 +7,7 @@ type SlotId = "A1"|"A2"|"A3"|"B1"|"B2"|"B3";
 type TeamId = "A"|"B";
 type TargetTeam = "ALLY"|"ENEMY"|"SELF"|"ALLY_TEAM";
 
-/* ===================== Estilos simples ===================== */
+/* ===================== Estilos ===================== */
 const pageWrap: React.CSSProperties = { fontFamily:"system-ui,Segoe UI,Roboto,Arial", padding:16, lineHeight:1.4, color:"#0f172a", background:"#f8fafc" };
 const h1: React.CSSProperties = { marginBottom:8, fontSize:24 };
 const bar: React.CSSProperties = { display:"flex", gap:8, alignItems:"center", margin:"8px 0 16px" };
@@ -34,7 +34,7 @@ const KIT_B: ActiveSkill[] = [
   mkSkill("b_1", "Golpe", "ENEMY", [{kind:"DANO", value:250}], { VERMELHO:1 }),
   mkSkill("b_2", "Guarda", "SELF", [{kind:"ESCUDO", value:300}], { VERDE:1 }),
   mkSkill("b_3", "Silenciar", "ENEMY", [{kind:"SILENCE", duration:1}], { BRANCO:1 }),
-  mkSkill("b_4", "Sangrar", "ENEMY", [{kind:"DOT", value:80, duration:2}], { PRETA:1 }),
+  mkSkill("b_4", "Bênção", "ALLY", [{kind:"HOT", value:80, duration:2}], { VERDE:1 }),
 ];
 const KIT_C: ActiveSkill[] = [
   mkSkill("c_1", "Flecha", "ENEMY", [{kind:"DANO", value:250}], { VERMELHO:1 }),
@@ -48,7 +48,7 @@ const CHAR_KITS: Record<CharacterId, { name:string; kit:ActiveSkill[] }> = {
   A:{ name:"Arcana", kit:KIT_A }, B:{ name:"Brutus", kit:KIT_B }, C:{ name:"Crystal", kit:KIT_C },
   D:{ name:"Dysis", kit:KIT_D }, E:{ name:"Eris", kit:KIT_E }, F:{ name:"Flux", kit:KIT_F },
 };
-// @ts-ignore para debug no console
+// @ts-ignore
 (window as any).CHAR_KITS = CHAR_KITS;
 
 /* ===================== Seleção (barra horizontal) ===================== */
@@ -208,25 +208,39 @@ export default function App(){
 
   function pushLog(s:string){ setLog(l=>[...l, `[${new Date().toLocaleTimeString()}] ${s}`]); }
 
+  // === CORRIGIDO: toggle (clicar na mesma skill cancela) + buffs escolhem aliado (ALLY) ===
   function enqueue(slot:SlotId, sk:ActiveSkill){
     if (!state) return;
     const actorTeam = (slot.startsWith("A") ? "A" : "B") as TeamId;
     if (actorTeam !== state.activeTeamId) return;
 
+    // Limites: 3 por turno / 1 por personagem
     if (queue.length >= 3) { pushLog("⚠️ Limite atingido: no máximo 3 ações por turno."); return; }
     const actsByThis = queue.filter(a=>a.actorId===slot).length;
     if (actsByThis >= 1) { pushLog(`⚠️ ${slot} já tem 1 ação na fila.`); return; }
 
+    // Toggle: clicar de novo na mesma skill cancela seleção pendente
+    if (pending && pending.actorId===slot && pending.skill.id===sk.id) {
+      setPending(null);
+      pushLog(`❌ ${slot} cancelou ${sk.name}`);
+      return;
+    }
+
+    // Alvos imediatos
     if (sk.target === "SELF") {
+      setPending(null);
       setQueue(q=>[...q, { actorTeam, actorId:slot, skillId:sk.id, target:{ team: actorTeam, id: slot } }]);
       pushLog(`${slot} preparou ${sk.name} (SELF)`);
       return;
     }
     if (sk.target === "ALLY_TEAM") {
+      setPending(null);
       setQueue(q=>[...q, { actorTeam, actorId:slot, skillId:sk.id, target:{ team: actorTeam } }]);
       pushLog(`${slot} preparou ${sk.name} (ALLY_TEAM)`);
       return;
     }
+
+    // Seleção de alvo (ALLY => aliados; ENEMY => inimigos)
     const targetTeam = (sk.target === "ALLY") ? actorTeam : (actorTeam==="A"?"B":"A");
     setPending({ actorTeam, actorId:slot, skill:sk, targetTeam });
     pushLog(`${slot} selecionando alvo para ${sk.name} (${sk.target})`);
