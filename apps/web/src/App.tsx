@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useMemo, useRef, useState } from "react";
-import { RuleEngine, type BattleState, type ActiveSkill, emptyEnergy } from "@arena/engine";
+import { RuleEngine, type BattleState, type ActiveSkill, emptyEnergy, CHARACTERS } from "@arena/engine";
 
 /* ===================== Tipos ===================== */
 type CharacterId = "A"|"B"|"C"|"D"|"E"|"F"|"G"|"H"|"I";
@@ -56,11 +56,7 @@ const KIT_E: ActiveSkill[] = [
   mkSkill("e_3", "Atordoar",   "ENEMY", [{kind:"STUN",   duration:1}], { BRANCO:1 }),
   mkSkill("e_4", "Barreira",   "ALLY",  [{kind:"ESCUDO", value:250}], { AZUL:1 }),
 ];
-const CHAR_KITS: Record<CharacterId, { name: string; kit: ActiveSkill[] }> = {
-  A:{name:"A",kit:KIT_A}, B:{name:"B",kit:KIT_B}, C:{name:"C",kit:KIT_C},
-  D:{name:"D",kit:KIT_D?KIT_D:KIT_A}, E:{name:"E",kit:KIT_E?KIT_E:KIT_B},
-  F:{name:"F",kit:KIT_F}, G:{name:"G",kit:KIT_G}, H:{name:"H",kit:KIT_H}, I:{name:"I",kit:KIT_I},
-};
+const CHAR_KITS: Record<CharacterId, { name: string; maxHp: number; tags: string[]; kit: ActiveSkill[] }> = CHARACTERS as any;
 // @ts-ignore
 (window as any).CHAR_KITS = CHAR_KITS;
 
@@ -252,8 +248,8 @@ function EnergyChips({pool}:{pool:Record<string,number>}) {
       turnNumber: 0,
       activeTeamId: "A",
       teams: {
-        A: { id:"A", characters:[toRuntime("A1",1000),toRuntime("A2",1000),toRuntime("A3",1000)], items:[], energy: emptyEnergy() },
-        B: { id:"B", characters:[toRuntime("B1",1200),toRuntime("B2",1100),toRuntime("B3",1100)], items:[], energy: emptyEnergy() },
+        A: { id:"A", characters:[toRuntime("A1", CHAR_KITS[picksA.A1].maxHp), toRuntime("A2", CHAR_KITS[picksA.A2].maxHp), toRuntime("A3", CHAR_KITS[picksA.A3].maxHp)], items:[], energy: emptyEnergy() },
+        B: { id:"B", characters:[toRuntime("B1", CHAR_KITS[picksB.B1].maxHp), toRuntime("B2", CHAR_KITS[picksB.B2].maxHp), toRuntime("B3", CHAR_KITS[picksB.B3].maxHp)], items:[], energy: emptyEnergy() },
       },
       settings: { turnDurationSec:60, maxActionsPerTurn:3, maxPerCharacterPerTurn:1 },
     };
@@ -518,6 +514,7 @@ const disabled = !canAct || stunned || blockedBySilence || (!!pending && !isPend
     </div>
   );
 }
+
 
 
 
