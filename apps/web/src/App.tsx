@@ -248,8 +248,8 @@ function EnergyChips({pool}:{pool:Record<string,number>}) {
       turnNumber: 0,
       activeTeamId: "A",
       teams: {
-        A: { id:"A", characters:[toRuntime("A1", CHAR_KITS[picksA.A1].maxHp), toRuntime("A2", CHAR_KITS[picksA.A2].maxHp), toRuntime("A3", CHAR_KITS[picksA.A3].maxHp)], items:[], energy: emptyEnergy() },
-        B: { id:"B", characters:[toRuntime("B1", CHAR_KITS[picksB.B1].maxHp), toRuntime("B2", CHAR_KITS[picksB.B2].maxHp), toRuntime("B3", CHAR_KITS[picksB.B3].maxHp)], items:[], energy: emptyEnergy() },
+        A: { id:"A", characters:[toRuntime("A1", CHAR_KITS[A.A1].maxHp), toRuntime("A2", CHAR_KITS[A.A2].maxHp), toRuntime("A3", CHAR_KITS[A.A3].maxHp)], items:[], energy: emptyEnergy() },
+        B: { id:"B", characters:[toRuntime("B1", CHAR_KITS[B.B1].maxHp), toRuntime("B2", CHAR_KITS[B.B2].maxHp), toRuntime("B3", CHAR_KITS[B.B3].maxHp)], items:[], energy: emptyEnergy() },
       },
       settings: { turnDurationSec:60, maxActionsPerTurn:3, maxPerCharacterPerTurn:1 },
     };
@@ -514,6 +514,7 @@ const disabled = !canAct || stunned || blockedBySilence || (!!pending && !isPend
     </div>
   );
 }
+
 
 
 
