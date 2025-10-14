@@ -159,6 +159,26 @@ function SelectScreen(props:{
 type Pending = { actorTeam:TeamId; actorId:SlotId; skill:ActiveSkill; targetTeam:TeamId } | null;
 
 export default function App(){
+  // === helpers visuais mínimos (não alteram layout) ===
+  const ENERGY_COLORS = { AZUL:"#3b82f6", VERMELHO:"#ef4444", VERDE:"#22c55e", BRANCO:"#e5e7eb", PRETA:"#111827" } as const;
+
+  const icon = (sk: ActiveSkill) => {
+    const k = sk.effects?.[0]?.kind;
+    return k==="DANO"?"⚔️":k==="ESCUDO"?"🛡️":k==="STUN"?"💫":k==="SILENCE"?"🤐":k==="DOT"?"🔥":k==="HOT"?"✨":k==="MARCACAO"?"🎯":"🧩";
+  };
+
+  const EnergyView = (pool: Record<"AZUL"|"VERMELHO"|"VERDE"|"BRANCO"|"PRETA", number>) => (
+    <div style={{display:"grid", gap:6}}>
+      {(["AZUL","VERMELHO","VERDE","BRANCO","PRETA"] as const).map(k=>(
+        <div key={k} style={{display:"flex", alignItems:"center", gap:8}}>
+          <span style={{display:"inline-block", width:10, height:10, borderRadius:999, background:ENERGY_COLORS[k], boxShadow:"inset 0 0 0 1px rgba(0,0,0,.06)"}} />
+          <span style={{minWidth:80, fontSize:13, color:"#334155"}}>{k}</span>
+          <strong style={{fontSize:13}}>{pool[k]}</strong>
+        </div>
+      ))}
+    </div>
+  );
+
   const engine = useMemo(()=> new RuleEngine(777), []);
   const [state, setState] = useState<BattleState|null>(null);
   const [picksA, setPicksA] = useState<Record<"A1"|"A2"|"A3",CharacterId>|null>(null);
@@ -348,9 +368,7 @@ export default function App(){
                           color: disabled ? "#9ca3af" : "#111827",
                           borderColor: disabled ? "#e5e7eb" : "#cbd5e1"
                         }}
-                      >
-                        {sk.name}
-                      </button>
+                      >{icon(sk)} {sk.name}</button>
                     );
                   })}
                 </div>
@@ -430,3 +448,4 @@ export default function App(){
     </div>
   );
 }
+
