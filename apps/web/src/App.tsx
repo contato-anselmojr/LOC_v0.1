@@ -2,40 +2,90 @@
 import { RuleEngine, type BattleState, type ActiveSkill, emptyEnergy } from "@arena/engine"
 
 type TeamId = "A"|"B"
-type QA = { actorTeam: TeamId; actorId: string; skillId: string; target?: { team: TeamId; id?: string } }
 type BaseColor = "AZUL"|"VERMELHO"|"VERDE"|"BRANCO"
 
-const skillsA: ActiveSkill[] = [
-  { id:"atk_magico", name:"Raio",     cost:{ AZUL:1 },    cooldown:1, target:"ENEMY", effects:[{ kind:"DANO", value:250 }] },
-  { id:"escudo",     name:"Barreira", cost:{ VERDE:1 },   cooldown:1, target:"SELF",  effects:[{ kind:"ESCUDO", value:250 }] },
-  { id:"controle",   name:"Atordoar", cost:{ BRANCO:1 },  cooldown:1, target:"ENEMY", effects:[{ kind:"STUN", duration:1 }] },
-  { id:"util",       name:"Marca",    cost:{ PRETA:1 },   cooldown:1, target:"ENEMY", effects:[{ kind:"MARCACAO", duration:2 }] },
-]
-const skillsB: ActiveSkill[] = [
-  { id:"golpe",    name:"Golpe",     cost:{ VERMELHO:1 }, cooldown:1, target:"ENEMY", effects:[{ kind:"DANO", value:250 }] },
-  { id:"guarda",   name:"Guarda",    cost:{ VERDE:1 },    cooldown:1, target:"SELF",  effects:[{ kind:"ESCUDO", value:300 }] },
-  { id:"provocar", name:"Provocar",  cost:{ BRANCO:1 },   cooldown:1, target:"ENEMY", effects:[{ kind:"SILENCE", duration:1 }] },
-  { id:"marreta",  name:"Marreta",   cost:{ PRETA:1 },    cooldown:1, target:"ENEMY", effects:[{ kind:"DANO", value:250 }] },
-]
-const lookup: Record<string, ActiveSkill> = Object.fromEntries([...skillsA, ...skillsB].map(s => [s.id, s]))
+type CharacterId = "A"|"B"|"C"|"D"|"E"|"F"
+type SlotIdA = "A1"|"A2"|"A3"
+type SlotIdB = "B1"|"B2"|"B3"
 
+type QA = { actorTeam: TeamId; actorId: string; skillId: string; target?: { team: TeamId; id?: string } }
+
+type Screen = "SELECT" | "BATTLE"
+
+/** ---------- CATÁLOGO DE PERSONAGENS (A–F) COM 4 SKILLS CADA ---------- */
+function S(id:string, name:string, cost:Partial<Record<"AZUL"|"VERMELHO"|"VERDE"|"BRANCO"|"PRETA",number>>, effects:ActiveSkill["effects"]): ActiveSkill {
+  return { id, name, cost, cooldown:1, target:"ENEMY", effects }
+}
+const CHAR_KITS: Record<CharacterId, { name:string; kit: ActiveSkill[] }> = {
+  A: { name:"Arcana (Mago DPS)",
+       kit: [
+         S("A_as1","Raio", {AZUL:1}, [{kind:"DANO",value:250}]),
+         S("A_as2","Explosão", {AZUL:2}, [{kind:"DANO",value:350}]),
+         S("A_as3","Marca Arcana", {PRETA:1}, [{kind:"MARCACAO",duration:2}]),
+         S("A_as4","Atordoar", {BRANCO:1}, [{kind:"STUN",duration:1}]),
+       ]},
+  B: { name:"Blademan (Lutador)",
+       kit: [
+         S("B_bs1","Golpe", {VERMELHO:1}, [{kind:"DANO",value:250}]),
+         S("B_bs2","Cortar", {VERMELHO:2}, [{kind:"DANO",value:350}]),
+         { ...S("B_bs3","Guarda", {VERDE:1}, [{kind:"ESCUDO",value:300}]), target:"SELF" },
+         S("B_bs4","Provocar", {BRANCO:1}, [{kind:"SILENCE",duration:1}]),
+       ]},
+  C: { name:"Clériga (Suporte Cura)",
+       kit: [
+         { ...S("C_cs1","Benção", {VERDE:1}, [{kind:"ESCUDO",value:250}]), target:"ALLY_TEAM" },
+         S("C_cs2","Luz", {AZUL:1}, [{kind:"DANO",value:200}]),
+         S("C_cs3","Selo", {BRANCO:1}, [{kind:"SILENCE",duration:1}]),
+         { ...S("C_cs4","Reforço", {VERDE:1}, [{kind:"RESISTENCIA",duration:2,value:0}]), target:"ALLY_TEAM" },
+       ]},
+  D: { name:"Defensor (Tank Early)",
+       kit: [
+         { ...S("D_ds1","Muralha", {VERDE:2}, [{kind:"ESCUDO",value:350}]), target:"SELF" },
+         S("D_ds2","Impacto", {VERMELHO:1}, [{kind:"DANO",value:220}]),
+         S("D_ds3","Atordoar", {BRANCO:1}, [{kind:"STUN",duration:1}]),
+         S("D_ds4","Quebra-Marcas", {PRETA:1}, [{kind:"DANO",value:250}]),
+       ]},
+  E: { name:"Envenenadora (DoT)",
+       kit: [
+         S("E_es1","Dardo", {VERMELHO:1}, [{kind:"DANO",value:230}]),
+         S("E_es2","Veneno", {PRETA:1}, [{kind:"DOT",duration:2,value:80}]),
+         S("E_es3","Fumaça", {BRANCO:1}, [{kind:"SILENCE",duration:1}]),
+         S("E_es4","Estocada", {VERMELHO:2}, [{kind:"DANO",value:330}]),
+       ]},
+  F: { name:"Frost (Controle)",
+       kit: [
+         S("F_fs1","Gélido", {AZUL:1}, [{kind:"DANO",value:220}]),
+         S("F_fs2","Congelar", {BRANCO:1}, [{kind:"STUN",duration:1}]),
+         { ...S("F_fs3","Barreira de Gelo", {VERDE:1}, [{kind:"ESCUDO",value:280}]), target:"SELF" },
+         S("F_fs4","Estilhaçar", {AZUL:2}, [{kind:"DANO",value:340}]),
+       ]},
+}
+
+/** ---------- APP ---------- */
 export default function App() {
   const engine = useMemo(()=> new RuleEngine(777), [])
-  const [state, setState]   = useState<BattleState | null>(null)
 
-  // seleção de personagem para enfileirar ações com 1 clique
-  const [selA, setSelA] = useState<"A1"|"A2"|"A3">("A1")
-  const [selB, setSelB] = useState<"B1"|"B2"|"B3">("B1")
+  /** TELA ATUAL */
+  const [screen, setScreen] = useState<Screen>("SELECT")
 
-  // Fila, console e timer
-  const [queue, setQueue]   = useState<QA[]>([])
-  const [log, setLog]       = useState<string[]>([])
+  /** SELEÇÃO */
+  const [teamA, setTeamA] = useState<{slots: Record<SlotIdA, CharacterId|null>}>({ slots:{A1:null,A2:null,A3:null} })
+  const [teamB, setTeamB] = useState<{slots: Record<SlotIdB, CharacterId|null>}>({ slots:{B1:null,B2:null,B3:null} })
+  const [pickTeam, setPickTeam] = useState<TeamId>("A")
+  const [pickSlotA, setPickSlotA] = useState<SlotIdA>("A1")
+  const [pickSlotB, setPickSlotB] = useState<SlotIdB>("B1")
+
+  /** BATALHA */
+  const [state, setState] = useState<BattleState | null>(null)
+  const [queue, setQueue] = useState<QA[]>([])
   const [showConsole, setShowConsole] = useState<boolean>(true)
-  const logRef = useRef<HTMLDivElement | null>(null)
-  useEffect(()=>{ if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight }, [log])
-  const t = () => new Date().toLocaleTimeString()
+  const [log, setLog] = useState<string[]>([])
+  const logRef = useRef<HTMLDivElement|null>(null)
+  const t = ()=> new Date().toLocaleTimeString()
   const addLog = (m:string)=> setLog(prev=>[...prev, `[${t()}] ${m}`])
+  useEffect(()=>{ if(logRef.current){ logRef.current.scrollTop = logRef.current.scrollHeight } },[log])
 
+  // Timer
   const TURN_SECONDS = 60
   const [remaining, setRemaining] = useState<number>(TURN_SECONDS)
   const [timerOn, setTimerOn] = useState<boolean>(false)
@@ -43,39 +93,89 @@ export default function App() {
     if (!timerOn || !state) return
     const id = window.setInterval(()=>{
       setRemaining(prev=>{
-        if (prev <= 1) {
-          window.clearInterval(id)
-          timeoutPass(true)
-          return TURN_SECONDS
-        }
-        return prev - 1
+        if(prev<=1){ window.clearInterval(id); timeoutPass(true); return TURN_SECONDS }
+        return prev-1
       })
-    }, 1000)
+    },1000)
     return ()=> window.clearInterval(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timerOn, state?.activeTeamId, state?.turnNumber])
   function resetTimer(start:boolean){ setRemaining(TURN_SECONDS); setTimerOn(start) }
 
-  const toRuntime = (id:string, hp:number) => ({ id, hp, shield:0, cooldowns:{}, effects:[] as any[] })
+  /** ---------- HELPERS ---------- */
+  const toRuntime = (id:string, hp:number)=>({ id, hp, shield:0, cooldowns:{}, effects:[] as any[] })
+  function buildLookupFromPicks(aSlots:Record<SlotIdA,CharacterId>, bSlots:Record<SlotIdB,CharacterId>){
+    const entries: ActiveSkill[] = []
+    const add = (cid:CharacterId|null)=>{ if(!cid) return; entries.push(...CHAR_KITS[cid].kit) }
+    Object.values(aSlots).forEach(add)
+    Object.values(bSlots).forEach(add)
+    return Object.fromEntries(entries.map(s=>[s.id,s])) as Record<string,ActiveSkill>
+  }
+  const [lookup, setLookup] = useState<Record<string,ActiveSkill>>({})
 
-  function setupMatch(){
+  /** ---------- TELA DE SELEÇÃO ---------- */
+  function pickChar(cid:CharacterId){
+    if(pickTeam==="A"){
+      const s = {...teamA.slots}
+      s[pickSlotA] = cid
+      setTeamA({slots:s})
+    } else {
+      const s = {...teamB.slots}
+      s[pickSlotB] = cid
+      setTeamB({slots:s})
+    }
+  }
+  function canConfirmTeams(){
+    const aOk = Object.values(teamA.slots).every(Boolean)
+    const bOk = Object.values(teamB.slots).every(Boolean)
+    return aOk && bOk
+  }
+  function confirmTeams(){
+    if(!canConfirmTeams()) return
+    // cria estado inicial com os escolhidos
+    const Aids = Object.keys(teamA.slots) as SlotIdA[]
+    const Bids = Object.keys(teamB.slots) as SlotIdB[]
+    // HP base simples para demonstração
+    const hpOf = (cid:CharacterId|null)=> {
+      switch(cid){
+        case "D": return 1300 // Defensor tank
+        case "B": return 1100 // Lutador
+        case "A": return 900  // Mago
+        case "E": return 900  // Assassina/DoT
+        case "F": return 950  // Controle
+        case "C": return 1000 // Suporte
+        default: return 1000
+      }
+    }
     const s: BattleState = {
       turnNumber: 1,
       activeTeamId: "A",
       teams: {
-        A: { id:"A", characters:[toRuntime("A1",900), toRuntime("A2",1000), toRuntime("A3",1000)], items: [], energy: emptyEnergy() },
-        B: { id:"B", characters:[toRuntime("B1",1300), toRuntime("B2",1200), toRuntime("B3",1200)], items: [], energy: emptyEnergy() },
+        A: { id:"A",
+             characters: Aids.map((slot,idx)=> toRuntime(slot, hpOf(teamA.slots[slot])) ),
+             items: [],
+             energy: emptyEnergy()
+        },
+        B: { id:"B",
+             characters: Bids.map((slot,idx)=> toRuntime(slot, hpOf(teamB.slots[slot])) ),
+             items: [],
+             energy: emptyEnergy()
+        },
       },
       settings: { turnDurationSec:TURN_SECONDS, maxActionsPerTurn:3, maxPerCharacterPerTurn:1 },
     }
-    engine.startMatch(s) // +1 energia para A no início da partida
-    setState({ ...s })
+    engine.startMatch(s)
+    setState({...s})
+    setLookup(buildLookupFromPicks(teamA.slots as any, teamB.slots as any))
     setQueue([])
-    setLog([`startMatch(): +1 energia para o time ${s.activeTeamId}`])
-    resetTimer(true) // timer auto a cada turno
+    setLog([`Times confirmados: A(${Aids.map(x=>teamA.slots[x]).join(",")}) vs B(${Bids.map(x=>teamB.slots[x]).join(",")})`,
+            `startMatch(): +1 energia para o time A`])
+    resetTimer(true)
+    setScreen("BATTLE")
   }
 
-  function queueAction(actorTeam: "A"|"B", actorId: string, skillId: string){
+  /** ---------- BATALHA: FILA, CONFIRMAR/PASSAR, TIMEOUT ---------- */
+  function queueAction(actorTeam: TeamId, actorId: string, skillId: string){
     if(!state) return
     if (actorTeam !== state.activeTeamId) { addLog(`ignorado: não é o turno do time ${actorTeam}`); return }
     const byChar = new Map(queue.map(q=>[q.actorId,0]))
@@ -87,16 +187,6 @@ export default function App() {
     const skillName = lookup[skillId]?.name ?? skillId
     addLog(`fila += ${actorTeam}:${actorId} • ${skillName}`)
   }
-
-  function convertToBlack(baseColor: BaseColor){
-    if(!state) return
-    const s = { ...state }
-    const ok = engine.convertToBlack(s as any, baseColor as any)
-    if (ok) addLog(`convertToBlack(): 1 ${baseColor} → PRETA`)
-    else addLog(`convertToBlack(): falhou (sem ${baseColor})`)
-    setState({ ...s })
-  }
-
   function confirmTurn(){
     if(!state) return
     const s = { ...state }
@@ -111,7 +201,6 @@ export default function App() {
     setState({ ...s })
     resetTimer(true)
   }
-
   function timeoutPass(fromTimer=false){
     if(!state) return
     const s = { ...state }
@@ -122,55 +211,124 @@ export default function App() {
     setState({ ...s })
     resetTimer(true)
   }
-
-  // SIMULAÇÕES
-  function sim_EnfileirarPadraoAtivo(){
-    if (!state) return
-    if (state.activeTeamId === "A") queueAction("A", selA, "atk_magico")
-    else queueAction("B", selB, "golpe")
-  }
-  function sim_ConfirmarX1(){ confirmTurn() }
-  function sim_AutoNTurnos(n:number){
-    if (!state || n<=0) return
-    sim_EnfileirarPadraoAtivo()
-    setTimeout(()=>{ confirmTurn(); setTimeout(()=> sim_AutoNTurnos(n-1), 350) }, 350)
-  }
-  function sim_Plus1EnergiaBaseAtivo(){
-    if (!state) return
-    const bases: BaseColor[] = ["AZUL","VERMELHO","VERDE","BRANCO"]
-    const pick = bases[Math.floor(Math.random()*bases.length)]
+  function convertToBlack(baseColor: BaseColor){
+    if(!state) return
     const s = { ...state }
-    s.teams[s.activeTeamId].energy[pick] = (s.teams[s.activeTeamId].energy[pick] ?? 0) + 1
+    const ok = engine.convertToBlack(s as any, baseColor as any)
+    addLog(ok ? `convertToBlack(): 1 ${baseColor} → PRETA` : `convertToBlack(): falhou (sem ${baseColor})`)
     setState({ ...s })
-    addLog(`sim: +1 energia base aleatória para ${s.activeTeamId} (${pick})`)
   }
 
-  // helpers UI
-  const mm = String(Math.floor(remaining/60)).padStart(2,"0")
-  const ss = String(remaining%60).padStart(2,"0")
+  /** ---------- UI COMPOSTA ---------- */
+  if (screen === "SELECT") {
+    return (
+      <div style={{ fontFamily:"system-ui, sans-serif", padding:16, color:"#111" }}>
+        <h1>Seleção de Times</h1>
+        <p>Escolha 3 personagens para cada time. Depois confirme para ir à batalha.</p>
 
+        <div style={{ display:"grid", gridTemplateColumns:"1fr 300px 1fr", gap:16, alignItems:"start" }}>
+          {/* Team A panel */}
+          <TeamPickPanel
+            title="Time A"
+            team="A"
+            slots={teamA.slots}
+            pickSlot={pickSlotA}
+            onPickSlot={(s)=>{ setPickTeam("A"); setPickSlotA(s as SlotIdA) }}
+          />
+
+          {/* Catalogo */}
+          <div style={catalogWrap}>
+            <div style={catalogHeader}>
+              <strong>Catálogo (A–F)</strong>
+              <div style={{fontSize:12,color:"#475569"}}>Clique para atribuir ao slot selecionado do time {pickTeam}</div>
+            </div>
+            <div style={catalogGrid}>
+              {(["A","B","C","D","E","F"] as CharacterId[]).map(cid=>{
+                const data = CHAR_KITS[cid]
+                return (
+                  <button key={cid} onClick={()=>pickChar(cid)} style={cardBtn}>
+                    <div style={{fontSize:24, fontWeight:900}}>{cid}</div>
+                    <div style={{fontSize:12,opacity:.75, textAlign:"center"}}>{data.name}</div>
+                    <div style={{marginTop:6, fontSize:11, opacity:.8}}>
+                      {data.kit.map(k=><span key={k.id} style={pill}>{k.name}</span>)}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Team B panel */}
+          <TeamPickPanel
+            title="Time B"
+            team="B"
+            slots={teamB.slots}
+            pickSlot={pickSlotB}
+            onPickSlot={(s)=>{ setPickTeam("B"); setPickSlotB(s as SlotIdB) }}
+          />
+        </div>
+
+        <div style={{display:"flex", gap:10, marginTop:16}}>
+          <button
+            onClick={confirmTeams}
+            disabled={!canConfirmTeams()}
+            style={{...btnPrimary, opacity: canConfirmTeams()?1:.5}}
+          >
+            Confirmar Times e Ir para Batalha
+          </button>
+          <button onClick={()=>{
+            setTeamA({slots:{A1:null,A2:null,A3:null}})
+            setTeamB({slots:{B1:null,B2:null,B3:null}})
+            setPickTeam("A"); setPickSlotA("A1"); setPickSlotB("B1")
+          }} style={btnAlt}>Limpar Seleção</button>
+        </div>
+      </div>
+    )
+  }
+
+  // --------- TELA DE BATALHA (reaproveita UI anterior, com lookup dinâmico) ----------
   const hpA = state?.teams.A.characters.map(c=>`${c.id}:${c.hp}(+${c.shield} esc)`).join("  ") ?? "-"
   const hpB = state?.teams.B.characters.map(c=>`${c.id}:${c.hp}(+${c.shield} esc)`).join("  ") ?? "-"
+  const mm = String(Math.floor(remaining/60)).padStart(2,"0")
+  const ss = String(remaining%60).padStart(2,"0")
   const canActA = state?.activeTeamId === "A"
   const canActB = state?.activeTeamId === "B"
 
+  function actButtons(team:TeamId){
+    if(!state) return null
+    const chars = state.teams[team].characters
+    return (
+      <div style={{display:"grid", gridTemplateColumns:"repeat(3, 1fr)", gap:8}}>
+        {chars.map(ch=>{
+          // skills do personagem escolhido (por letra) — pega por prefixo do id do slot
+          const letter = (ch.id[0] as "A"|"B") // slot A1->A, B2->B; mapeamos por time *para demo rápida*
+          // Para fidelidade, usamos catálogo dos picks originais:
+          const fromCatalog = CHAR_KITS[ (letter as any) as CharacterId ]?.kit ?? []
+          return (
+            <div key={ch.id} style={card}>
+              <div style={{fontWeight:800, marginBottom:6}}>{team}:{ch.id}</div>
+              <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:6}}>
+                {fromCatalog.map(sk=>
+                  <button key={sk.id} onClick={()=>queueAction(team, ch.id, sk.id)} style={btnSmall}>
+                    {sk.name}
+                  </button>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+  }
+
   return (
-    <div style={{ fontFamily:"system-ui, sans-serif", padding:16, lineHeight:1.45, color:"#111" }}>
-      <h1 style={{ marginBottom:8 }}>Arena Multiverso — MVP (web)</h1>
-      <p>Times em formação 3x3 (visual “-  x  -”). Fila → <strong>Confirmar/Passar</strong> executa. Timer por turno automático.</p>
-
-      {/* Controles principais */}
-      <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:12 }}>
-        <button onClick={setupMatch} style={btn}>Iniciar Partida</button>
-
-        <button onClick={()=>queueAction("A", selA, "atk_magico")} style={{...btn, opacity: canActA?1:.5}} disabled={!canActA}>Fila: {selA} — Raio</button>
-        <button onClick={()=>queueAction("B", selB, "golpe")}      style={{...btn, opacity: canActB?1:.5}} disabled={!canActB}>Fila: {selB} — Golpe</button>
-
+    <div style={{ fontFamily:"system-ui, sans-serif", padding:16, color:"#111" }}>
+      <h1>Arena Multiverso — Batalha</h1>
+      <div style={{display:"flex", gap:8, flexWrap:"wrap", marginBottom:12}}>
+        <button onClick={()=>setScreen("SELECT")} style={btnAlt}>Voltar para Seleção</button>
+        <button onClick={()=>convertToBlack("AZUL")} style={btnAlt}>Conversão: AZUL→PRETA</button>
         <button onClick={confirmTurn} style={btnPrimary}>Confirmar / Passar</button>
         <button onClick={()=>timeoutPass(false)} style={btnAlt}>Simular Timeout</button>
-
-        <button onClick={()=>convertToBlack("AZUL")} style={btnAlt}>Conversão: AZUL→PRETA</button>
-
         <span style={{ alignSelf:"center", fontWeight:800, padding:"6px 10px", border:"1px solid #d1d5db", borderRadius:10, background:"#fff" }}>
           ⏱️ Tempo: {mm}:{ss}
         </span>
@@ -178,229 +336,125 @@ export default function App() {
         <button onClick={()=>setLog([])} style={btnAlt}>Limpar Console</button>
       </div>
 
-      {/* Formação dos Times */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16 }}>
-        <Formation
-          title="Time A"
-          teamId="A"
-          selected={selA}
-          onSelect={(id)=>setSelA(id as any)}
-          canAct={canActA}
-          leftLabels={["A1","A2","A3"]}
-          rightLabels={["","",""]}
-        />
-        <Formation
-          title="Time B"
-          teamId="B"
-          selected={selB}
-          onSelect={(id)=>setSelB(id as any)}
-          canAct={canActB}
-          leftLabels={["","",""]}
-          rightLabels={["B1","B2","B3"]}
-        />
-      </div>
-
-      {/* Painéis de energia e status */}
       {state && (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginTop:16, alignItems:"start" }}>
-          <div style={card}>
-            <h3 style={{ marginTop:0 }}>Time A — Energia</h3>
-            <pre style={{ margin:0 }}>{JSON.stringify(state.teams.A.energy, null, 2)}</pre>
-          </div>
-          <div style={card}>
-            <h3 style={{ marginTop:0 }}>Time B — Energia</h3>
-            <pre style={{ margin:0 }}>{JSON.stringify(state.teams.B.energy, null, 2)}</pre>
-          </div>
-          <div style={{ gridColumn:"1 / span 2", ...card, borderStyle:"dashed" }}>
-            <div><strong>Turno:</strong> {state.turnNumber} • <strong>Ativo:</strong> {state.activeTeamId}</div>
-            <div style={{ marginTop:6 }}><strong>HP A:</strong> {hpA}</div>
-            <div><strong>HP B:</strong> {hpB}</div>
-          </div>
-          <div style={{ gridColumn:"1 / span 2", ...card }}>
-            <h3 style={{ marginTop:0 }}>Fila de Ações (turno {state.activeTeamId})</h3>
-            {queue.length===0 ? <div style={{opacity:.6}}>— vazia —</div> :
-              <ol>{queue.map((q,i)=> <li key={i}>{q.actorTeam}:{q.actorId} • {lookup[q.skillId]?.name ?? q.skillId}</li>)}</ol>}
-            <small>Regras: até 3 ações por turno; máx. 1 por personagem.</small>
-          </div>
-
-          {/* Simulações */}
-          <div style={{ gridColumn:"1 / span 2", ...card }}>
-            <h3 style={{ marginTop:0 }}>Simulações</h3>
-            <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-              <button onClick={sim_EnfileirarPadraoAtivo} style={btnAlt}>Enfileirar padrão do ativo</button>
-              <button onClick={sim_ConfirmarX1} style={btnAlt}>Confirmar x1</button>
-              <button onClick={()=>sim_AutoNTurnos(3)} style={btnAlt}>Auto 3 turnos</button>
-              <button onClick={sim_Plus1EnergiaBaseAtivo} style={btnAlt}>+1 energia base (ativo)</button>
+        <>
+          <div style={{display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, alignItems:"start"}}>
+            <div style={{...card, borderColor: canActA?"#16a34a":"#ddd"}}>
+              <div style={{fontWeight:900, marginBottom:6}}>Time A {canActA && <span style={{color:"#16a34a"}}>• Turno</span>}</div>
+              {actButtons("A")}
             </div>
-            <small>Somente para testes; não altera o motor.</small>
-          </div>
-        </div>
-      )}
+            <div style={{...card, borderColor: canActB?"#16a34a":"#ddd"}}>
+              <div style={{fontWeight:900, marginBottom:6}}>Time B {canActB && <span style={{color:"#16a34a"}}>• Turno</span>}</div>
+              {actButtons("B")}
+            </div>
 
-      {/* Console */}
-      {showConsole && (
-        <div style={consoleWrap}>
-          <div style={consoleHeader}>Console</div>
-          <div ref={logRef} style={consoleBody}>
-            {log.length === 0 ? <div style={{ opacity:.6 }}>— sem eventos ainda —</div> :
-              log.map((l,i)=><div key={i} style={{ whiteSpace:"pre-wrap" }}>{l}</div>)
-            }
+            <div style={{ gridColumn:"1 / span 2", ...card, borderStyle:"dashed" }}>
+              <div><strong>Turno:</strong> {state.turnNumber} • <strong>Ativo:</strong> {state.activeTeamId}</div>
+              <div style={{ marginTop:6 }}><strong>HP A:</strong> {hpA}</div>
+              <div><strong>HP B:</strong> {hpB}</div>
+            </div>
+
+            <div style={{ gridColumn:"1 / span 2", ...card }}>
+              <h3 style={{ marginTop:0 }}>Fila de Ações (turno {state.activeTeamId})</h3>
+              {queue.length===0 ? <div style={{opacity:.6}}>— vazia —</div> :
+                <ol>{queue.map((q,i)=> <li key={i}>{q.actorTeam}:{q.actorId} • {(lookup[q.skillId]?.name ?? q.skillId)}</li>)}</ol>}
+              <small>Regras: até 3 ações por turno; máx. 1 por personagem.</small>
+            </div>
           </div>
-        </div>
+
+          {showConsole && (
+            <div style={consoleWrap}>
+              <div style={consoleHeader}>Console</div>
+              <div ref={logRef} style={consoleBody}>
+                {log.length === 0 ? <div style={{ opacity:.6 }}>— sem eventos ainda —</div> :
+                  log.map((l,i)=><div key={i} style={{ whiteSpace:"pre-wrap" }}>{l}</div>)
+                }
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   )
 }
 
-/** Formação 3x3 com centro marcado “x” (visual: -  x  -).
- *  Para Time A: rótulos à esquerda (A1/A2/A3). Para Time B: rótulos à direita (B1/B2/B3).
- *  Clique numa posição para selecionar o personagem ativo do time.
- */
-function Formation(props:{
-  title: string
-  teamId: TeamId
-  leftLabels: [string,string,string] | [string?,string?,string?]
-  rightLabels: [string,string,string] | [string?,string?,string?]
-  selected: string
-  onSelect: (id:string)=>void
-  canAct: boolean
+/** ---------- Componentes da TELA DE SELEÇÃO ---------- */
+
+function TeamPickPanel(props:{
+  title:string
+  team: TeamId
+  slots: Record<"A1"|"A2"|"A3"|"B1"|"B2"|"B3", CharacterId|null>
+  pickSlot: string
+  onPickSlot: (slot:string)=>void
 }){
-  const { title, teamId, leftLabels, rightLabels, selected, onSelect, canAct } = props
-  // três linhas com layout: [label] [centro x] [label]
-  const rows = [0,1,2].map(i=>{
-    const left  = leftLabels[i]  ?? ""
-    const right = rightLabels[i] ?? ""
-    const cell = (id:string, side:"L"|"R")=>{
-      if (!id) return <div />
-      const isSel = selected === id
-      return (
-        <button
-          onClick={()=>onSelect(id)}
-          title={(teamId==="A"?"Selecionar ":"Select ") + id}
-          style={{
-            ...slotBtn,
-            borderColor: isSel ? "#4f46e5" : "#d1d5db",
-            outline: isSel ? "2px solid #c7d2fe" : "none",
-            cursor: "pointer",
-            opacity: canAct ? 1 : .6
-          }}
-        >
-          <div style={{ fontWeight:800 }}>{id}</div>
-          <small style={{ opacity:.75 }}>{teamId}</small>
-        </button>
-      )
-    }
-    return (
-      <div key={i} style={rowLine}>
-        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-          {left ? cell(left,"L") : <div style={{ width:84 }} />}
-        </div>
-        <div style={centerCell}>x</div>
-        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
-          {right ? cell(right,"R") : <div style={{ width:84 }} />}
-        </div>
-      </div>
-    )
-  })
+  const ids = props.team==="A" ? (["A1","A2","A3"] as const) : (["B1","B2","B3"] as const)
   return (
     <div style={formationWrap}>
       <div style={formationHeader}>
-        <strong>{title}</strong> {canAct ? <span style={{ color:"#16a34a", fontWeight:700 }}>• Turno</span> : <span style={{ color:"#64748b" }}>• Aguardando</span>}
+        <strong>{props.title}</strong>
       </div>
-      <div style={formationGrid}>
-        {rows}
-      </div>
-      <div style={{ padding:"6px 8px", textAlign:"center", color:"#475569" }}>
-        Clique no slot do seu time para selecionar: {selected}
+      <div style={{padding:12, display:"grid", gap:10}}>
+        {ids.map((slot,i)=>{
+          const isSel = props.pickSlot===slot
+          const cid = props.slots[slot as keyof typeof props.slots]
+          return (
+            <div key={slot} style={rowLine}>
+              <button onClick={()=>props.onPickSlot(slot)} style={{
+                ...slotBtn, width:"100%", justifyContent:"space-between",
+                borderColor: isSel ? "#4f46e5" : "#d1d5db",
+                outline: isSel ? "2px solid #c7d2fe" : "none",
+              }}>
+                <div style={{display:"flex", gap:8, alignItems:"center"}}>
+                  <div style={{fontWeight:800}}>{slot}</div>
+                  <div style={{opacity:.6}}>•</div>
+                  <div>{cid ? `${cid} — ${CHAR_KITS[cid].name}` : "vazio"}</div>
+                </div>
+                <div style={{display:"flex", gap:6}}>
+                  {cid ? CHAR_KITS[cid].kit.map(k=><span key={k.id} style={pill}>{k.name}</span>) : null}
+                </div>
+              </button>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
 }
 
-const formationWrap: React.CSSProperties = {
-  border:"1px solid #e5e7eb",
-  borderRadius:16,
-  overflow:"hidden",
-  background:"#fff",
-  boxShadow:"0 1px 2px rgba(0,0,0,.04)"
+/** ---------- Estilos ---------- */
+const catalogWrap: React.CSSProperties = {
+  border:"1px solid #e5e7eb", borderRadius:16, overflow:"hidden", background:"#fff"
 }
-const formationHeader: React.CSSProperties = {
-  padding:"8px 12px",
-  borderBottom:"1px solid #e5e7eb",
-  background:"linear-gradient(180deg, #fafafa, #f3f4f6)"
+const catalogHeader: React.CSSProperties = {
+  padding:"8px 12px", borderBottom:"1px solid #e5e7eb", background:"linear-gradient(180deg,#fafafa,#f3f4f6)"
 }
-const formationGrid: React.CSSProperties = {
-  display:"grid",
-  gridTemplateRows:"repeat(3, 72px)",
-  gap:10,
-  padding:12
+const catalogGrid: React.CSSProperties = {
+  padding:12, display:"grid", gridTemplateColumns:"1fr", gap:10
 }
-const rowLine: React.CSSProperties = {
-  display:"grid",
-  gridTemplateColumns:"1fr 40px 1fr",
-  alignItems:"center",
-  gap:8
+const cardBtn: React.CSSProperties = {
+  border:"1px solid #d1d5db", borderRadius:12, background:"linear-gradient(180deg,#ffffff,#f8fafc)",
+  padding:10, display:"grid", gap:4, cursor:"pointer", color:"#111", textAlign:"center"
 }
-const centerCell: React.CSSProperties = {
-  width:40, height:40, border:"1px dashed #cbd5e1", borderRadius:10,
-  display:"grid", placeItems:"center", color:"#111", background:"#f8fafc", fontWeight:800
-}
-const slotBtn: React.CSSProperties = {
-  width:84, height:52,
-  border:"1px solid #d1d5db",
-  borderRadius:12,
-  background:"linear-gradient(180deg, #ffffff, #f8fafc)",
-  color:"#111",
-  display:"grid",
-  placeItems:"center",
-  gap:2
+const pill: React.CSSProperties = {
+  display:"inline-block", padding:"2px 6px", border:"1px solid #e5e7eb", borderRadius:999, marginRight:4, marginBottom:4, fontSize:10, background:"#fff"
 }
 
-const card: React.CSSProperties = {
-  border:"1px solid #ddd",
-  borderRadius:12,
-  padding:12,
-  background:"#fff",
-  color:"#111"
+const formationWrap: React.CSSProperties = {
+  border:"1px solid #e5e7eb", borderRadius:16, overflow:"hidden", background:"#fff", boxShadow:"0 1px 2px rgba(0,0,0,.04)"
 }
-const btn: React.CSSProperties = {
-  padding:"9px 14px",
-  borderRadius:12,
-  border:"1px solid #bdbdbd",
-  cursor:"pointer",
-  background:"linear-gradient(180deg, #ffffff, #f3f3f3)",
-  color:"#111",
-  fontWeight:700
+const formationHeader: React.CSSProperties = {
+  padding:"8px 12px", borderBottom:"1px solid #e5e7eb", background:"linear-gradient(180deg,#fafafa,#f3f4f6)"
 }
-const btnPrimary: React.CSSProperties = {
-  ...btn,
-  background:"linear-gradient(180deg, #eef6ff, #dbeafe)",
-  border:"1px solid #93c5fd"
+const rowLine: React.CSSProperties = { display:"grid", gridTemplateColumns:"1fr", alignItems:"center", gap:8 }
+const slotBtn: React.CSSProperties = {
+  border:"1px solid #d1d5db", borderRadius:12, background:"linear-gradient(180deg,#ffffff,#f8fafc)", color:"#111", padding:"8px 10px"
 }
-const btnAlt: React.CSSProperties = {
-  ...btn,
-  background:"linear-gradient(180deg, #f9fafb, #ececec)"
-}
-const consoleWrap: React.CSSProperties = {
-  marginTop:16,
-  border:"1px solid #d1d5db",
-  borderRadius:12,
-  overflow:"hidden",
-  background:"#111",
-  color:"#e5e7eb",
-  boxShadow:"0 1px 3px rgba(0,0,0,.1)"
-}
-const consoleHeader: React.CSSProperties = {
-  padding:"8px 12px",
-  fontWeight:700,
-  background:"#0b0b0b",
-  borderBottom:"1px solid #222"
-}
-const consoleBody: React.CSSProperties = {
-  maxHeight:260,
-  overflow:"auto",
-  padding:"10px 12px",
-  fontFamily:"ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
-  fontSize:13,
-  lineHeight:1.5
-}
+
+const card: React.CSSProperties = { border:"1px solid #ddd", borderRadius:12, padding:12, background:"#fff", color:"#111" }
+const btn: React.CSSProperties = { padding:"9px 14px", borderRadius:12, border:"1px solid #bdbdbd", cursor:"pointer", background:"linear-gradient(180deg,#ffffff,#f3f3f3)", color:"#111", fontWeight:700 }
+const btnPrimary: React.CSSProperties = { ...btn, background:"linear-gradient(180deg,#eef6ff,#dbeafe)", border:"1px solid #93c5fd" }
+const btnAlt: React.CSSProperties = { ...btn, background:"linear-gradient(180deg,#f9fafb,#ececec)" }
+const btnSmall: React.CSSProperties = { ...btn, padding:"6px 8px", fontSize:12 }
+const consoleWrap: React.CSSProperties = { marginTop:16, border:"1px solid #d1d5db", borderRadius:12, overflow:"hidden", background:"#111", color:"#e5e7eb", boxShadow:"0 1px 3px rgba(0,0,0,.1)" }
+const consoleHeader: React.CSSProperties = { padding:"8px 12px", fontWeight:700, background:"#0b0b0b", borderBottom:"1px solid #222" }
+const consoleBody: React.CSSProperties = { maxHeight:260, overflow:"auto", padding:"10px 12px", fontFamily:"ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", fontSize:13, lineHeight:1.5 }
