@@ -10,3 +10,5 @@
 - Build web: `npm run web:build`
 
 Dica: também pode dar **duplo clique** em `run-web-dev.bat`.
+
+_ci trigger: 2025-10-14 03:51:29
