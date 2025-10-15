@@ -1,0 +1,1 @@
+app.use((req, res, next) = applySecureHeaders(res); next(); });

@@ -1,0 +1,1 @@
+app.get("/health", (_, res) = ok: true, service: "loc-server", ts: Date.now() }));
