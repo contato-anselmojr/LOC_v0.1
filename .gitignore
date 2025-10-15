@@ -5,3 +5,10 @@ dist
 .DS_Store
 .idea
 .vscode
+
+# Server env and secrets
+.env
+.env.*
+apps/server/.env
+apps/server/secrets.*
+
