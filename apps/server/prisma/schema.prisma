@@ -15,24 +15,47 @@ model User {
   xp        Int       @default(0)
   cash      Int       @default(0)
   createdAt DateTime  @default(now())
-  characters Character[]
-  logs       Log[]
+
+
 }
 
-model Character {
-  id     Int    @id @default(autoincrement())
-  name   String
-  level  Int    @default(1)
-  xp     Int    @default(0)
-  gold   Int    @default(0)
-  user   User   @relation(fields: [userId], references: [id])
-  userId Int
-}
 
 model Log {
   id        Int      @id @default(autoincrement())
-  user      User     @relation(fields: [userId], references: [id])
+  
   userId    Int
   action    String
   timestamp DateTime @default(now())
+}
+
+/// --- Character MVP (sem relação com usuário ainda) ---
+enum Role {
+  tank
+  mago
+  adc
+  suporte
+  assassino
+  evasivo
+}
+
+model Character {
+  id          String   @id @default(cuid())
+  name        String
+  role        Role
+
+  // Atributos base
+  hp          Int      @default(7000)
+  baseDamage  Int      @default(2000)
+
+  // Progressão
+  xp          Int      @default(0)
+  gold        Int      @default(0)
+  level       Int      @default(1)
+
+  // Metadados
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([role])
+  @@index([level])
 }

@@ -1,3 +1,4 @@
+import battleRouter from "./routes/battle";
 ﻿import express, { Request, Response, NextFunction } from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -38,3 +39,4 @@ app.listen(ENV.PORT, () => {
 import meRoutes from './routes/me';
 
 app.use('/api', meRoutes);
+app.use("/api/battle", battleRouter);
