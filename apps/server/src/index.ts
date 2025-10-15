@@ -1,42 +1,16 @@
-import battleRouter from "./routes/battle";
-﻿import express, { Request, Response, NextFunction } from "express";
+import express from "express";
 import cors from "cors";
-import helmet from "helmet";
-import rateLimit from "express-rate-limit";
-import dotenv from "dotenv";
-import { CORS_OPTIONS } from "./middleware/cors";
-import { applySecureHeaders } from "./middleware/secureHeaders";
-import { requestLogger } from "./middleware/logger";
-import { RATE_LIMIT } from "./middleware/rateLimit";
-import { ENV } from "./config/env";
-import authRoutes from "./routes/auth";
+import battleRouter from "./routes/battle";
 
-dotenv.config();
 const app = express();
+app.use(cors());
+app.use(express.json());
 
-// === Middlewares globais ===
-app.use(express.json()); // ✅ Habilita JSON no body das requisições
-app.use(requestLogger);
-app.use(helmet());
-app.use(cors(CORS_OPTIONS));
-app.use(rateLimit(RATE_LIMIT));
-app.use((req: Request, res: Response, next: NextFunction) => {
-  applySecureHeaders(res);
-  next();
+// Rotas principais
+app.use("/api", battleRouter);
+
+// Inicialização do servidor
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`��� Servidor rodando em http://localhost:${PORT}`);
 });
-
-// === Rotas principais ===
-app.get("/health", (_, res) =>
-  res.json({ ok: true, service: "loc-server", ts: Date.now() })
-);
-app.use("/api", authRoutes);
-
-// === Inicialização ===
-app.listen(ENV.PORT, () => {
-  console.log(`[loc-server] running securely on port ${ENV.PORT}`);
-});
-
-import meRoutes from './routes/me';
-
-app.use('/api', meRoutes);
-app.use("/api/battle", battleRouter);

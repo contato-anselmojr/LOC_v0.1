@@ -1,61 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "sqlite"
   url      = "file:./dev.db"
 }
 
-generator client {
-  provider = "prisma-client-js"
+model Battle {
+  id              String        @id @default(cuid())
+  status          String
+  turn            Int
+  currentPlayerId String
+  state           Json
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  actions         BattleAction[]
+}
+
+model BattleAction {
+  id        String   @id @default(cuid())
+  battleId  String
+  actorId   String
+  targetId  String
+  skillName String
+  data      Json
+  createdAt DateTime @default(now())
+
+  battle    Battle   @relation(fields: [battleId], references: [id], onDelete: Cascade)
+
+  @@index([battleId])
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
-  email     String    @unique
+  id        String   @id @default(cuid())
+  email     String   @unique
   password  String
-  nickname  String
-  xp        Int       @default(0)
-  cash      Int       @default(0)
-  createdAt DateTime  @default(now())
-
-
+  nickname  String?
+  xp        Int      @default(0)
+  cash      Int      @default(0)
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  logs      Log[]
 }
-
 
 model Log {
-  id        Int      @id @default(autoincrement())
-  
-  userId    Int
+  id        String   @id @default(cuid())
+  userId    String?
   action    String
   timestamp DateTime @default(now())
-}
+  context   Json?
 
-/// --- Character MVP (sem relação com usuário ainda) ---
-enum Role {
-  tank
-  mago
-  adc
-  suporte
-  assassino
-  evasivo
-}
-
-model Character {
-  id          String   @id @default(cuid())
-  name        String
-  role        Role
-
-  // Atributos base
-  hp          Int      @default(7000)
-  baseDamage  Int      @default(2000)
-
-  // Progressão
-  xp          Int      @default(0)
-  gold        Int      @default(0)
-  level       Int      @default(1)
-
-  // Metadados
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([role])
-  @@index([level])
+  user      User?    @relation(fields: [userId], references: [id])
 }

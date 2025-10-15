@@ -6,7 +6,7 @@ const prisma = new PrismaClient();
  * @param userId ID do usuário
  * @param action Descrição da ação (ex: 'register', 'login')
  */
-export async function logAction(userId: number, action: string) {
+export async function logAction(userId: string, action: string) {
   try {
     await prisma.log.create({
       data: { userId, action, timestamp: new Date() },

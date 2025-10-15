@@ -1,0 +1,143 @@
+import * as fs from "fs";
+
+const diff = `
+diff --git a/apps/server/prisma/schema.prisma b/apps/server/prisma/schema.prisma
+--- a/apps/server/prisma/schema.prisma
++++ b/apps/server/prisma/schema.prisma
+@@ -50,6 +50,74 @@ model Character {
+   updatedAt   DateTime @updatedAt
+   @@index([role])
+   @@index([level])
+ }
++
++// ======================================
++// BATTLE SYSTEM v0.3 - Persistent Engine
++// ======================================
++
++model Battle {
++  id          String   @id @default(cuid())
++  createdAt   DateTime @default(now())
++  updatedAt   DateTime @updatedAt
++  status      String   @default("active") // active | finished
++  turn        Int      @default(1)
++  currentPlayerId String?
++  winnerId    String?
++
++  // Estado dinâmico completo (HPs, energias, buffs, etc.)
++  state       Json
++
++  // Relações
++  players     BattleCharacter[]
++  actions     BattleAction[]
++
++  @@index([status])
++}
++
++model BattleCharacter {
++  id          String   @id @default(cuid())
++  battleId    String
++  userId      String?
++  characterId String?
++  hp          Int      @default(7000)
++  energy      Int      @default(0)
++  team        Int      @default(1)
++
++  battle      Battle   @relation(fields: [battleId], references: [id])
++
++  // Futura expansão (modo Battle Royale)
++  // position Int? // slot no grid
++  // eliminated Boolean @default(false)
++
++  @@index([battleId])
++}
++
++model BattleAction {
++  id          String   @id @default(cuid())
++  battleId    String
++  actorId     String?
++  targetId    String?
++  skillName   String?
++  data        Json?
++  createdAt   DateTime @default(now())
++
++  battle      Battle   @relation(fields: [battleId], references: [id])
++
++  @@index([battleId])
++}
+diff --git a/apps/server/src/routes/battle.ts b/apps/server/src/routes/battle.ts
+--- a/apps/server/src/routes/battle.ts
++++ b/apps/server/src/routes/battle.ts
+@@ -1,6 +1,97 @@
+ import { Router } from "express";
+ const router = Router();
++
++import { PrismaClient } from "@prisma/client";
++const prisma = new PrismaClient();
++
++// ===========================
++// v0.3 Persistent Battle API
++// ===========================
++
++// Inicia nova batalha (2 jogadores)
++router.post("/start", async (req, res) => {
++  try {
++    const { player1Id, player2Id } = req.body;
++    const battle = await prisma.battle.create({
++      data: {
++        state: { players: [player1Id, player2Id], log: [] },
++      },
++    });
++    res.json({ ok: true, id: battle.id });
++  } catch (err) {
++    res.status(500).json({ error: String(err) });
++  }
++});
++
++// Executa ação
++router.post("/action", async (req, res) => {
++  const { battleId, actorId, targetId, skillName, data } = req.body;
++  try {
++    const battle = await prisma.battle.findUnique({ where: { id: battleId } });
++    if (!battle) return res.status(404).json({ error: "Battle not found" });
++
++    // Simulação simples (integra engine.ts real futuramente)
++    const state: any = battle.state || {};
++    state.log = state.log || [];
++    state.log.push({ actorId, targetId, skillName, ts: Date.now() });
++
++    const updated = await prisma.battle.update({
++      where: { id: battleId },
++      data: { state, updatedAt: new Date() },
++    });
++
++    await prisma.battleAction.create({
++      data: { battleId, actorId, targetId, skillName, data },
++    });
++
++    res.json({ ok: true, battle: updated });
++  } catch (err) {
++    res.status(500).json({ error: String(err) });
++  }
++});
++
++// Obtém estado atual
++router.get("/state/:id", async (req, res) => {
++  try {
++    const battle = await prisma.battle.findUnique({ where: { id: req.params.id } });
++    if (!battle) return res.status(404).json({ error: "Battle not found" });
++    res.json({ ok: true, battle });
++  } catch (err) {
++    res.status(500).json({ error: String(err) });
++  }
++});
++
+ export default router;
++
++# COMMIT: feat(battle): sistema de batalha persistente (v0.3)
++# IMPACTO: alto
++# TESTE_RÁPIDO: npx prisma migrate dev --name battle-persistent
++# NOTAS: inclui suporte recarregável e base p/ Battle Royale futura
+`;
+
+fs.writeFileSync("battle_v0.3.diff", diff.trim());
+console.log("✅ battle_v0.3.diff gerado com sucesso!");

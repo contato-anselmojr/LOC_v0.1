@@ -97,6 +97,7 @@ export interface CharacterState {
   cooldowns: Record<string, number>; // skillId -> turnos restantes
   items: ID[];          // itens equipados neste match
   alive: boolean;
+  energy: Record<string, number>;
 }
 
 // Jogador controla até 3 personagens e possui a CARTEIRA DE ENERGIA
@@ -160,4 +161,8 @@ export interface BattleState {
  *   - Laranja: 3 iguais -> 1 laranja.
  * - Execução:
  *   - Ação só é válida quando “passar a vez” (ou timeout).
+ */
+
+/**
+ * Patch — adiciona campo energy ao CharacterState
  */

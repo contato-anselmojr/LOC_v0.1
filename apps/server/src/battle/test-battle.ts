@@ -11,6 +11,7 @@ function cs(id: ID, name: string, hp: number): CharacterState {
     cooldowns: {},
     items: [],
     alive: true,
+    energy: {},
   };
 }
 
