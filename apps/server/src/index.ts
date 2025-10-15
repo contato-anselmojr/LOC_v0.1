@@ -34,3 +34,7 @@ app.use("/api", authRoutes);
 app.listen(ENV.PORT, () => {
   console.log(`[loc-server] running securely on port ${ENV.PORT}`);
 });
+
+import meRoutes from './routes/me';
+
+app.use('/api', meRoutes);

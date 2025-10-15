@@ -2,6 +2,7 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
+import { logAction } from "../utils/logs";
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -10,7 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "dev_secret";
 // === Registro ===
 router.post("/register", async (req, res) => {
   try {
-    console.log("📩 Body recebido:", req.body); // <-- log do body
+    console.log("📩 Body recebido:", req.body);
     const { email, password, nickname } = req.body;
 
     if (!email || !password || !nickname) {
@@ -19,10 +20,12 @@ router.post("/register", async (req, res) => {
     }
 
     const hashed = await bcrypt.hash(password, 10);
-
     const user = await prisma.user.create({
       data: { email, password: hashed, nickname },
     });
+
+    // 🔹 Log automático
+    await logAction(user.id, "register");
 
     console.log("✅ Usuário criado com sucesso:", user);
     res.json({ id: user.id, email: user.email, nickname: user.nickname });
@@ -44,6 +47,10 @@ router.post("/login", async (req, res) => {
     if (!valid) return res.status(400).json({ error: "invalid_credentials" });
 
     const token = jwt.sign({ id: user.id }, JWT_SECRET, { expiresIn: "1h" });
+
+    // 🔹 Log automático
+    await logAction(user.id, "login");
+
     res.json({ token });
   } catch (err: any) {
     console.error("❌ login_failed:", err.message, err);
