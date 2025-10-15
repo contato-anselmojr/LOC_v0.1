@@ -1,47 +1,41 @@
-﻿//
-// === SECURITY-HOOKS (commented) ===
-//
-// import { requestLogger } from "./middleware/logger";
-// import { applySecureHeaders } from "./middleware/secureHeaders";
-// import { CORS_OPTIONS } from "./middleware/cors";
-// import { RATE_LIMIT } from "./middleware/rateLimit";
-// import { ENV } from "./config/env";
-//
-// // Example usage (if using express):
-// // app.use(requestLogger);
-// // app.use(cors(CORS_OPTIONS));
-// // app.use(rateLimit(RATE_LIMIT));
-// // app.use((req,res,next)=>{applySecureHeaders(res);next();});
-//
-import * as http from "http";
-import { AddressInfo } from "net";
+﻿import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import dotenv from "dotenv";
+import { CORS_OPTIONS } from "./middleware/cors";
+import { applySecureHeaders } from "./middleware/secureHeaders";
+import { requestLogger } from "./middleware/logger";
+import { RATE_LIMIT } from "./middleware/rateLimit";
+import { ENV } from "./config/env";
 
-const PORT = Number(process.env.PORT || 3001);
+dotenv.config();
+const app = express();
 
-const server = http.createServer((req, res) => {
-  if (req.url === "/health") {
-    const body = JSON.stringify({ ok: true, service: "loc-server", ts: Date.now() });
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(body);
-    return;
-  }
-  res.statusCode = 404;
-  res.end("Not Found");
+// === Segurança básica (modo dev seguro) ===
+app.use(requestLogger);
+app.use(helmet());
+app.use(cors(CORS_OPTIONS));
+app.use(rateLimit(RATE_LIMIT));
+app.use((req, res, next) => {
+  applySecureHeaders(res);
+  next();
 });
 
-server.on("error", (err) => {
-  console.error("[loc-server] server error:", err);
-});
+// === Endpoints temporários ===
+app.get("/health", (_, res) => res.json({ ok: true, service: "loc-server", ts: Date.now() }));
+app.get("/api/characters", (_, res) => res.json([{ id: 1, name: "Hero" }]));
+app.get("/api/skills", (_, res) => res.json([{ id: 1, name: "Fireball" }]));
 
-process.on("uncaughtException", (e) => {
-  console.error("[loc-server] uncaughtException:", e);
+// === Inicialização ===
+app.listen(ENV.PORT, () => {
+  console.log(`[loc-server] running securely on port ${ENV.PORT}`);
 });
-process.on("unhandledRejection", (e) => {
-  console.error("[loc-server] unhandledRejection:", e);
-});
+import { Request, Response, NextFunction } from "express";
 
-server.listen(PORT, () => {
-  const { port } = server.address() as AddressInfo;
-  console.log(`[loc-server] listening on :${port}`);
-});
+// ...
 
+app.use((req: Request, res: Response, next: NextFunction) => {
+  applySecureHeaders(res);
+  next();
+});
