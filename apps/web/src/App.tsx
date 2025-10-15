@@ -7,21 +7,31 @@ import Battle from "./pages/Battle";
 export default function App() {
   const nav = useNavigate();
   const token = localStorage.getItem("token");
+
   return (
-    <div style={{ fontFamily: "sans-serif", padding: 16, maxWidth: 900, margin: "0 auto" }}>
-      <header style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 12 }}>
-        <h2 style={{ marginRight: "auto" }}>LOC — Demo 3x3</h2>
-        <Link to="/">Home</Link>
-        <Link to="/register">Cadastro</Link>
-        <Link to="/login">Login</Link>
-        <Link to="/select">Seleção</Link>
-        <Link to="/battle">Batalha</Link>
-        {token && (
-          <button onClick={() => { localStorage.removeItem("token"); nav("/"); }} style={{ marginLeft: 8 }}>
-            Sair
-          </button>
-        )}
+    <div className="min-h-screen bg-gray-900 text-white font-sans px-6 py-4">
+      <header className="flex gap-4 items-center mb-4 border-b border-white/10 pb-2">
+        <h2 className="mr-auto text-xl font-semibold">LOC — Demo 3×3</h2>
+        <nav className="flex gap-3">
+          <Link to="/" className="hover:text-blue-400">Home</Link>
+          <Link to="/register" className="hover:text-blue-400">Cadastro</Link>
+          <Link to="/login" className="hover:text-blue-400">Login</Link>
+          <Link to="/select" className="hover:text-blue-400">Seleção</Link>
+          <Link to="/battle" className="hover:text-blue-400">Batalha</Link>
+          {token && (
+            <button
+              onClick={() => {
+                localStorage.removeItem("token");
+                nav("/");
+              }}
+              className="ml-3 text-sm text-red-400 hover:text-red-300"
+            >
+              Sair
+            </button>
+          )}
+        </nav>
       </header>
+
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/register" element={<Register />} />
@@ -32,11 +42,14 @@ export default function App() {
     </div>
   );
 }
+
 function Home() {
   return (
-    <div>
-      <p>Bem-vindo. Use o menu para testar: Cadastro, Login, Seleção de 3 personagens e a tela de Batalha 3x3 (simulada).</p>
-      <small>Backend esperado: http://localhost:3001</small>
+    <div className="text-gray-300 leading-relaxed">
+      <p>
+        Bem-vindo. Use o menu para testar: Cadastro, Login, Seleção de 3 personagens e a tela de Batalha 3×3 (simulada).
+      </p>
+      <small className="opacity-70">Backend esperado: http://localhost:3001</small>
     </div>
   );
 }

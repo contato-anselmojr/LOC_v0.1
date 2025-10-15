@@ -1,0 +1,11 @@
+﻿@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-900 text-white;
+}
+
+.test-tailwind {
+  @apply bg-blue-500 text-white p-4 rounded-xl;
+}

@@ -1,10 +1,12 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import BattleUI from "./pages/BattleUI";
 import BattleTest from "./pages/BattleTest";
 
 const router = createBrowserRouter([
-  { path: "/", element: <BattleTest /> },
+  { path: "/", element: <BattleUI /> },
+  { path: "/test", element: <BattleTest /> },
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -12,3 +14,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <RouterProvider router={router} />
   </React.StrictMode>
 );
+
+import './index.css';
