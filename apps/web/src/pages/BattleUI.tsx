@@ -115,7 +115,7 @@ export default function BattleUI() {
     // (regra final fica no backend; aqui só impedimos alvo do mesmo time para simplificar a UX)
     if (pId === sel.playerId) return;
 
-    const action = {
+    const action = { 
       source: { playerId: sel.playerId, charId: sel.charId },
       target: { playerId: pId, charId: cId },
       skillId: sel.skillId,
