@@ -1,4 +1,4 @@
-﻿import { Skill, EnergyCost } from "./types";
+﻿	import { Skill, EnergyCost } from "./types";
 
 export function calculateSkillCost(skill: Skill): EnergyCost {
   // Sistema atualizado baseado em nomes completos (RED, BLUE, WHITE, GREEN)
@@ -102,7 +102,6 @@ function randomEnergy(): keyof EnergyCost {
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
-// Avança o turno e gera energia conforme regras do jogo
 export function nextTurn(battle: any) {
   const current = battle.currentPlayerId;
   const nextPlayer =
@@ -112,34 +111,55 @@ export function nextTurn(battle: any) {
   battle.turn += 1;
   battle.currentPlayerId = nextPlayer;
 
+  // Controle de energia gerada para log
+  const turnReport: string[] = [];
+
   // Geração de energia conforme turno
   battle.players.forEach((p: any, idx: number) => {
     const vivos = p.characters?.filter((c: any) => c.hp > 0) ?? [];
+    const ganhos: Record<string, number> = { RED: 0, BLUE: 0, WHITE: 0, GREEN: 0 };
 
     // Primeiro turno → apenas o jogador inicial ganha
     if (battle.turn === 2 && idx === 0) {
       vivos.forEach(() => {
         const e = randomEnergy();
         p.energy[e]++;
+        ganhos[e]++;
       });
     }
+
     // Turnos seguintes → todos ganham
     if (battle.turn > 2) {
       vivos.forEach(() => {
         const e = randomEnergy();
         p.energy[e]++;
+        ganhos[e]++;
       });
     }
+
+    // adiciona ao relatório de log
+    const ganhosTxt = Object.entries(ganhos)
+      .filter(([_, v]) => v > 0)
+      .map(([k, v]) => `${k}+${v}`)
+      .join(", ");
+
+    if (ganhosTxt)
+      turnReport.push(`🟢 ${p.name} ganhou ${ganhosTxt}`);
   });
 
-  battle.log.push(`🔁 Início do turno ${battle.turn}`);
-  // Atualiza energia global (espelho usado no front)
+  // Atualiza energia global (HUD)
   battle.energy = {};
   battle.players.forEach((p: any) => {
     battle.energy[p.id] = { ...p.energy };
   });
 
+  // Log do turno
+  battle.log.push(`🔁 Início do turno ${battle.turn}`);
+  if (turnReport.length > 0) {
+    battle.log.push(...turnReport);
+  } else {
+    battle.log.push("⚠️ Nenhum ganho de energia neste turno");
+  }
+
   return battle;
 }
-
-
