@@ -1,4 +1,4 @@
-import express from "express";
+ï»¿import express from "express";
 import cors from "cors";
 import battleRouter from "./routes/battle";
 
@@ -6,11 +6,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Rotas principais
-app.use("/api", battleRouter);
+// --- rotas principais ---
+app.use("/api", battleRouter); // âœ… Aqui conecta suas rotas
 
-// InicializaÃ§Ã£o do servidor
-const PORT = process.env.PORT || 3000;
+// rota de teste
+app.get("/", (_, res) => res.send("âœ… Servidor Arena Multiverso ativo"));
+
+const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(`í´¥ Servidor rodando em http://localhost:${PORT}`);
+  console.log(`[loc-server] rodando na porta ${PORT}`);
 });

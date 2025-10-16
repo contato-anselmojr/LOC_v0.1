@@ -2,44 +2,96 @@
 import { motion } from "framer-motion";
 import axios from "axios";
 
-/**
- * ===============================
- *  PLACEHOLDERS DE IMAGENS
- *  Substitua as constantes abaixo pelos seus links de imagem quando quiser.
- *  Usei o texto solicitado para facilitar a busca: "> site da sua imagem aqui <"
- * ===============================
- */
-const IMG_BG = "> site da sua imagem aqui <";                 // plano de fundo grande da arena
-const IMG_FRAME_AVATAR = "> site da sua imagem aqui <";       // moldura quadrada do avatar
-const IMG_FRAME_HEALTH = "> site da sua imagem aqui <";       // moldura/barra decorativa do HP
-const IMG_ICON_ENERGY = "> site da sua imagem aqui <";        // ícone genérico de energia/habilidade
-const IMG_TOPBAR_FRAME = "> site da sua imagem aqui <";       // moldura/ornamento do topo (opcional)
-
-const roleIcon: Record<string, string> = {
-  tank: "🛡️",
-  mago: "🪄",
-  assassino: "🗡️",
-  adc: "🏹",
-};
+// Ícones simples por função
+const roleIcon: Record<string, string> = { tank: "🛡️", mago: "🪄", assassino: "🗡️", adc: "🏹" };
+type Color = "B" | "R" | "G" | "Y";
 
 export default function BattleUI() {
   const [battle, setBattle] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  const bgStyle =
-    typeof IMG_BG === "string" && IMG_BG.startsWith(">")
-      ? {}
-      : { backgroundImage: `url(${IMG_BG})`, backgroundSize: "cover", backgroundPosition: "center" };
+  const [sel, setSel] = useState<null | { playerId: string; charId: string; skillId: string }>(null);
+  const [queue, setQueue] = useState<any[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [logConsole, setLogConsole] = useState<string[]>([]);
 
   async function startBattle() {
     setLoading(true);
     try {
       const res = await axios.post("/api/start");
       setBattle(res.data.battle);
+      setLogConsole((prev) => [
+        ...prev,
+        "🕹️ Nova batalha iniciada!",
+        `Turno ${res.data.battle.turn}`,
+      ]);
+      setQueue([]);
+      setSel(null);
     } catch (err) {
       console.error(err);
+      setLogConsole((prev) => [...prev, "⚠️ Erro ao iniciar batalha"]);
     } finally {
       setLoading(false);
+    }
+  }
+
+  const currentPlayerId: string | null = battle?.currentPlayerId ?? null;
+  const energy = (pid: string) => battle?.energy?.[pid] ?? {};
+
+  function canPay(pid: string, cost: Record<Color, number>) {
+    const pool = energy(pid);
+    return Object.entries(cost ?? {}).every(([c, q]: any) => (pool?.[c] ?? 0) >= (q ?? 0));
+  }
+
+  function toggleSkill(pId: string, cId: string, skill: any) {
+    if (pId !== currentPlayerId) return;
+    if (!canPay(pId, skill.cost || {})) return;
+    if (sel && sel.playerId === pId && sel.charId === cId && sel.skillId === skill.id) {
+      setSel(null);
+    } else {
+      setSel({ playerId: pId, charId: cId, skillId: skill.id });
+    }
+  }
+
+  function clickTarget(pId: string, cId: string) {
+    if (!sel) return;
+    if (pId === sel.playerId) return;
+
+    const action = {
+      source: { playerId: sel.playerId, charId: sel.charId },
+      target: { playerId: pId, charId: cId },
+      skillId: sel.skillId,
+    };
+    setQueue((q) => [...q, action]);
+    setSel(null);
+  }
+
+  async function passTurn() {
+    if (!battle || queue.length === 0) return;
+    setSubmitting(true);
+    try {
+      const res = await axios.post("/api/turn", { battleId: battle.id, actions: queue });
+      setBattle(res.data.battle);
+      setQueue([]);
+      setSel(null);
+
+      const lines = (res.data.results ?? []).map((r: any) => {
+        if (!r.ok) return `❌ Falha: ${r.reason}`;
+        if (r.type === "damage") return `⚔️ ${r.skill} causou ${r.amount} em ${r.target}`;
+        if (r.type === "heal") return `💚 ${r.skill} curou ${r.amount} em ${r.target}`;
+        return JSON.stringify(r);
+      });
+
+      setLogConsole((prev) => [
+        ...prev.slice(-30),
+        `--- TURNO ${res.data.battle.turn - 1} ---`,
+        ...lines,
+      ]);
+    } catch (err) {
+      console.error(err);
+      setLogConsole((prev) => [...prev, "⚠️ Erro no turno"]);
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -54,15 +106,14 @@ export default function BattleUI() {
         >
           {loading ? "Iniciando..." : "🕹️ Iniciar Batalha"}
         </button>
-        <p className="mt-3 text-xs opacity-70">
-          Substitua as imagens depois: &quot;&gt; site da sua imagem aqui &lt;&quot;
-        </p>
+        <p className="mt-3 text-xs opacity-70">Clique em “Iniciar” para gerar a batalha.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen text-white bg-gray-900" style={bgStyle}>
+    <div className="min-h-screen text-white bg-gray-900">
+      {/* Topbar */}
       <div className="backdrop-blur-sm bg-black/40">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -75,86 +126,13 @@ export default function BattleUI() {
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-2 gap-6">
-        {battle.state.players.map((p: any, pIndex: number) => (
-          <motion.div
-            key={p.id}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: pIndex * 0.2 }}
-            className="rounded-2xl bg-black/35 border border-white/10 shadow-xl overflow-hidden"
-          >
-            <div className="px-4 py-3 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="relative w-10 h-10 rounded bg-white/10 grid place-items-center text-xs opacity-80">
-                  {p.name.slice(0, 1).toUpperCase()}
-                </div>
-                <div>
-                  <div className="font-semibold tracking-wide">
-                    {p.name} {p.id === battle.currentPlayerId && "👑"}
-                  </div>
-                  <div className="text-[10px] uppercase opacity-60">Rank — Provisório</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="p-4 grid grid-cols-3 gap-3">
-              {p.characters.map((c: any, i: number) => (
-                <motion.div
-                  key={c.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4, delay: 0.3 + i * 0.1 }}
-                  className="relative rounded-xl bg-white/5 border border-white/10 overflow-hidden"
-                >
-                  <div className="relative h-28 grid place-items-center">
-                    <div className="w-[72px] h-[72px] rounded bg-black/30 border border-white/10 grid place-items-center text-xs text-white/70">
-                      {roleIcon[c.role] ?? "❔"}
-                    </div>
-                    <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between text-[11px]">
-                      <span className="px-1.5 py-0.5 rounded bg-black/60 backdrop-blur border border-white/10">
-                        {c.name}
-                      </span>
-                      <span className="px-1.5 py-0.5 rounded bg-black/60 backdrop-blur border border-white/10">
-                        {c.role}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="relative px-2 pt-2 pb-3">
-                    <div className="h-2.5 bg-black/50 rounded overflow-hidden border border-white/10">
-                      <motion.div
-                        initial={{ width: "0%" }}
-                        animate={{ width: `${(c.hp / c.maxHp) * 100}%` }}
-                        transition={{ duration: 0.8 }}
-                        className="h-full bg-gradient-to-r from-green-500 to-lime-400"
-                      />
-                    </div>
-                    <div className="flex items-center justify-between mt-1 text-[11px] opacity-80">
-                      <span className="px-1.5 py-0.5 rounded bg-black/40 border border-white/10">
-                        {c.hp}/{c.maxHp}
-                      </span>
-                      <span className="px-1.5 py-0.5 rounded bg-black/40 border border-white/10">
-                        {roleIcon[c.role] ?? "❔"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="px-2 pb-2 grid grid-cols-4 gap-1.5">
-                    {Array.from({ length: 4 }).map((_, j) => (
-                      <div
-                        key={j}
-                        className="relative h-10 rounded bg-black/40 border border-white/10 overflow-hidden grid place-items-center text-[10px] text-white/70"
-                      >
-                        Skill
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        ))}
+      {/* Painel de Logs */}
+      <div className="max-w-6xl mx-auto px-4 pb-8 mt-6">
+        <div className="rounded-2xl border border-white/10 bg-black/40 p-3 h-48 overflow-y-auto text-xs font-mono">
+          {logConsole.slice().reverse().map((line, i) => (
+            <div key={i} className="opacity-80">{line}</div>
+          ))}
+        </div>
       </div>
     </div>
   );
