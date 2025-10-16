@@ -1,161 +1,164 @@
-﻿import type { BattleState, PlayerState, CharacterState } from "./types";
+﻿/** Battle Engine — estável
+ * - Sintaxe válida (corrige chaves quebradas)
+ * - 1 ação por personagem/turno (controle via _usedChars)
+ * - passTurn: alterna jogador e concede energia = vivos do próximo jogador
+ */
 
-// === Criação de Batalha ===
-export function initBattle(id: string): BattleState {
-  const makeChar = (id: string, name: string, role: string): CharacterState => ({
-    id,
-    name,
-    role,
-    hp: 100,
-    maxHp: 100,
-    alive: true,
-    cooldowns: {},
-    skills: [
-      { id: "strike", name: "Golpe", kind: "attack", cost: { B: 1 }, power: 25 },
-      { id: "fireball", name: "Fireball", kind: "attack", cost: { R: 2 }, power: 40 },
-      { id: "heal", name: "Cura", kind: "heal", cost: { G: 1 }, power: 20 },
-      { id: "shield", name: "Escudo", kind: "shield", cost: { Y: 1 }, power: 0 },
-    ],
-  });
+export type Color = "B" | "R" | "G" | "Y";
+export type Cost = Partial<Record<Color, number>>;
 
-  const state: BattleState = {
-    id,
-    status: "active",
-    turn: 1,
-    currentPlayerId: "P1",
-    players: [
-      { id: "P1", name: "Jogador 1", characters: [
-        makeChar("p1c1", "Raven", "assassino"),
-        makeChar("p1c2", "Boreal", "tank"),
-        makeChar("p1c3", "Lyra", "mago"),
-      ]},
-      { id: "P2", name: "Jogador 2", characters: [
-        makeChar("p2c1", "Kai", "adc"),
-        makeChar("p2c2", "Nox", "assassino"),
-        makeChar("p2c3", "Oris", "mago"),
-      ]},
-    ],
-    energy: {
-      P1: { B: 0, R: 0, G: 0, Y: 0 },
-      P2: { B: 0, R: 0, G: 0, Y: 0 },
-    },
-  };
+export type SkillKind = "attack" | "heal" | "buff" | "shield" | "control" | "damage";
 
-  return state;
+export interface Skill {
+  id: string;
+  name: string;
+  kind: SkillKind;
+  cost: Cost;
+  power: number;
 }
 
-// === Ganha energia aleatória ===
-export function grantRandomEnergy(pool: Record<string, number>, amount: number) {
-  const colors = ["B", "R", "G", "Y"];
-  for (let i = 0; i < amount; i++) {
+export interface CharacterState {
+  id: string;
+  name: string;
+  role: "adc" | "tank" | "mago" | "assassino";
+  hp: number;
+  maxHp: number;
+  skills: Skill[];
+  alive: boolean;
+}
+
+export interface PlayerState {
+  id: string;
+  name: string;
+  characters: CharacterState[];
+}
+
+export type EnergyPool = Partial<Record<Color, number>>;
+
+export interface BattleState {
+  id: string;
+  turn: number;
+  currentPlayerId: string;
+  players: PlayerState[];
+  energy: Record<string, EnergyPool>;
+  // campo interno para controle do turno atual (não persista se não quiser)
+  _usedChars?: Set<string>;
+}
+
+export function findChar(battle: BattleState, playerId: string, charId: string): CharacterState | null {
+  const p = battle.players.find(p => p.id === playerId);
+  if (!p) return null;
+  const c = p.characters.find(c => c.id === charId);
+  return c ?? null;
+}
+
+export function canPay(pool: EnergyPool, cost: Cost): boolean {
+  return Object.entries(cost ?? {}).every(([c, q]) => (pool[c as Color] ?? 0) >= (q ?? 0));
+}
+
+export function consumeEnergy(pool: EnergyPool, cost: Cost) {
+  Object.entries(cost ?? {}).forEach(([c, q]) => {
+    const k = c as Color;
+    pool[k] = Math.max(0, (pool[k] ?? 0) - (q ?? 0));
+  });
+}
+
+export function grantRandomEnergy(pool: EnergyPool, n = 1) {
+  const colors: Color[] = ["B", "R", "G", "Y"];
+  for (let i = 0; i < n; i++) {
     const c = colors[Math.floor(Math.random() * colors.length)];
     pool[c] = (pool[c] ?? 0) + 1;
   }
 }
 
-// === Executar ação ===
-export function declareAction(battle: BattleState, act: any) {
+/** Aplica uma ação. Garante 1 ação por personagem por turno. */
+export function declareAction(battle: BattleState, act: {
+  source: { playerId: string; charId: string };
+  target: { playerId: string; charId: string };
+  skillId: string;
+}) {
   const results: any[] = [];
 
-  // Evita múltiplas ações com o mesmo personagem por turno
-  (battle as any)._usedChars = (battle as any)._usedChars || new Set<string>();
-  const used = (battle as any)._usedChars;
-  const srcKey = act.source.playerId + ":" + act.source.charId;
-  if (used.has(srcKey)) {
+  // trava: 1 ação por personagem por turno
+  battle._usedChars = battle._usedChars || new Set<string>();
+  const srcKey = `${act.source.playerId}:${act.source.charId}`;
+  if (battle._usedChars.has(srcKey)) {
     results.push({ ok: false, reason: "Esse personagem já agiu neste turno!" });
     return results;
   }
-  used.add(srcKey);
+  battle._usedChars.add(srcKey);
 
+  // validações
   const src = findChar(battle, act.source.playerId, act.source.charId);
   const tgt = findChar(battle, act.target.playerId, act.target.charId);
-  if (!src || !tgt) {
-    results.push({ ok: false, reason: "Personagem inválido" });
+  if (!src || !tgt || !src.alive || !tgt.alive) {
+    results.push({ ok: false, reason: "Personagem inválido ou morto" });
     return results;
   }
 
-  const skill = src.skills.find((s) => s.id === act.skillId);
+  const skill = src.skills.find(s => s.id === act.skillId);
   if (!skill) {
     results.push({ ok: false, reason: "Skill inválida" });
     return results;
   }
 
-  const pool = battle.energy[act.source.playerId];
-  const canPay = Object.entries(skill.cost).every(([c, q]) => (pool[c] ?? 0) >= q);
-  if (!canPay) {
-    results.push({ ok: false, reason: "Energia insuficiente" });
+  // regra de alvo (aliado vs inimigo)
+  const friendly = act.source.playerId === act.target.playerId;
+  const healingKinds: SkillKind[] = ["heal", "buff", "shield"];
+  const offensiveKinds: SkillKind[] = ["attack", "control", "damage"];
+
+  if (healingKinds.includes(skill.kind) && !friendly) {
+    results.push({ ok: false, reason: "Skill de cura/buff só em aliados" });
+    return results;
+  }
+  if (offensiveKinds.includes(skill.kind) && friendly) {
+    results.push({ ok: false, reason: "Skill ofensiva só em inimigos" });
     return results;
   }
 
-  for (const [c, q] of Object.entries(skill.cost)) pool[c] -= q;
+  // custo
+  const pool = battle.energy[act.source.playerId] || {};
+  if (!canPay(pool, skill.cost)) {
+    results.push({ ok: false, reason: "Energia insuficiente" });
+    return results;
+  }
+  consumeEnergy(pool, skill.cost);
 
-  if (skill.kind === "attack") {
+  // efeito
+  if (offensiveKinds.includes(skill.kind)) {
     tgt.hp = Math.max(0, tgt.hp - skill.power);
     if (tgt.hp === 0) tgt.alive = false;
-    results.push({ ok: true, type: "damage", skill: skill.name, amount: skill.power, target: tgt.name });
-  } else if (skill.kind === "heal") {
+    results.push({ ok: true, type: "damage", skill: skill.id, amount: skill.power, target: tgt.id });
+  } else if (healingKinds.includes(skill.kind)) {
+    // cura/buff/shield simples (cura no alvo)
     tgt.hp = Math.min(tgt.maxHp, tgt.hp + skill.power);
-    results.push({ ok: true, type: "heal", skill: skill.name, amount: skill.power, target: tgt.name });
-  } else if (skill.kind === "shield") {
-    results.push({ ok: true, type: "buff", skill: skill.name, effect: "Escudo ativado" });
+    results.push({ ok: true, type: "heal", skill: skill.id, amount: skill.power, target: tgt.id });
+  } else {
+    results.push({ ok: true, type: "none" });
   }
 
   return results.length ? results : [{ ok: true, type: "none" }];
 }
-  }
 
-  const skill = src.skills.find((s) => s.id === act.skillId);
-  if (!skill) {
-    results.push({ ok: false, reason: "Skill inválida" });
-    return results;
-  }
-
-  // Checa energia
-  const pool = battle.energy[act.source.playerId];
-  const canPay = Object.entries(skill.cost).every(([c, q]) => (pool[c] ?? 0) >= q);
-  if (!canPay) {
-    results.push({ ok: false, reason: "Energia insuficiente" });
-    return results;
-  }
-
-  // Consome energia
-  for (const [c, q] of Object.entries(skill.cost)) pool[c] -= q;
-
-  if (skill.kind === "attack") {
-    tgt.hp = Math.max(0, tgt.hp - skill.power);
-    if (tgt.hp === 0) tgt.alive = false;
-    results.push({ ok: true, type: "damage", skill: skill.name, amount: skill.power, target: tgt.name });
-  } else if (skill.kind === "heal") {
-    tgt.hp = Math.min(tgt.maxHp, tgt.hp + skill.power);
-    results.push({ ok: true, type: "heal", skill: skill.name, amount: skill.power, target: tgt.name });
-  } else if (skill.kind === "shield") {
-    results.push({ ok: true, type: "buff", skill: skill.name, effect: "Escudo ativado" });
-  }
-
-  return results;
-}
-
-// === Passar turno ===
+/** Alterna jogador, incrementa turno e concede energia = nº de vivos do próximo jogador */
 export function passTurn(battle: BattleState) {
-  const next = battle.currentPlayerId === "P1" ? "P2" : "P1";
-  battle.currentPlayerId = next;
-  battle.turn += 1;
+  const current = battle.currentPlayerId;
+  const next = battle.players.find(p => p.id !== current)?.id || current;
 
-  const aliveCount = countAlive(battle, next);
-  grantRandomEnergy(battle.energy[next], aliveCount);
+  // avança turno e alterna
+  battle.turn += 1;
+  battle.currentPlayerId = next;
+
+  // reseta controle de ações por personagem
+  battle._usedChars = new Set<string>();
+
+  // concede energia ao próximo jogador (1 por personagem vivo)
+  const nextPlayer = battle.players.find(p => p.id === next);
+  const aliveCount = (nextPlayer?.characters || []).filter(c => c.alive).length;
+  const pool = battle.energy[next] || (battle.energy[next] = {});
+  for (let i = 0; i < aliveCount; i++) {
+    grantRandomEnergy(pool, 1);
+  }
 
   return battle;
 }
-
-// === Auxiliares ===
-function findChar(battle: BattleState, pid: string, cid: string): CharacterState | null {
-  const player = battle.players.find((p) => p.id === pid);
-  return player?.characters?.find((c) => c.id === cid) ?? null;
-}
-
-function countAlive(battle: BattleState, pid: string): number {
-  const player = battle.players.find((p) => p.id === pid);
-  return player ? player.characters.filter((c) => c.alive).length : 0;
-}
-
-
