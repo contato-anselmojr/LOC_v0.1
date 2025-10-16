@@ -136,7 +136,7 @@ export default function BattleUI() {
         </div>
       </div>
 
-      {Array.isArray(battle?.players) && (
+      {{Array.isArray(battle?.players) && (
   <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-2 gap-6">
     {battle.players.map((p: any, pIndex: number) => (
       <motion.div
@@ -221,6 +221,5 @@ export default function BattleUI() {
     </div>
   );
 }
-
 
 
