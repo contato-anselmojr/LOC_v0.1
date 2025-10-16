@@ -235,13 +235,6 @@ router.post("/turn", async (req, res) => {
     const next = battle.players.find(p => p.id === battle.currentPlayerId)!;
     const give = next.characters.filter(c => c.alive).length;
     grantRandomEnergy(battle.energy[battle.currentPlayerId], give);
-    (results as any[]).push({
-      type: "energy",
-      player: battle.currentPlayerId,
-      amount: give,
-      message: `⚡ ${battle.currentPlayerId} ganhou +${give} energias (${give} vivos)`
-    });
-
   }try {
     await prisma.battle.create({
       data: { player1: 1, player2: 2, state: battle as any },
@@ -252,7 +245,5 @@ router.post("/turn", async (req, res) => {
 });
 
 export default router;
-
-
 
 
