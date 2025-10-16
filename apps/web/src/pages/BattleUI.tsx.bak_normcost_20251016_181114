@@ -9,26 +9,10 @@ function normalizeBattle(b: any) {
     ...b,
     players: b.players ?? state?.players ?? [],
     energy:  b.energy  ?? state?.energy  ?? {}
-function normalizeCost(cost) {
-  if (!cost) return {};
-  const hasOld = ('B' in cost) || ('R' in cost) || ('G' in cost) || ('Y' in cost);
-  if (hasOld) {
-    return {
-      WHITE: cost.B ?? 0,
-      RED:   cost.R ?? 0,
-      GREEN: cost.G ?? 0,
-      BLUE:  cost.Y ?? 0
-    };
-  }
-  return {
-    RED:   cost.RED   ?? 0,
-    BLUE:  cost.BLUE  ?? 0,
-    WHITE: cost.WHITE ?? 0,
-    GREEN: cost.GREEN ?? 0
-  };
-}
 
-;
+// Mapeia custos antigos ({B,R,G,Y}) para novos ({WHITE,RED,GREEN,BLUE})
+function normalizeCost(cost: any): Partial<Record<"RED"|"BLUE"|"WHITE"|"GREEN", number>> {
+  if (!cost) return {};
   const hasOld = ("B" in cost) || ("R" in cost) || ("G" in cost) || ("Y" in cost);
   if (hasOld) {
     return {
@@ -37,16 +21,6 @@ function normalizeCost(cost) {
       GREEN: cost.G ?? 0,
       BLUE:  cost.Y ?? 0,
     };
-  }
-  return {
-    RED:   cost.RED   ?? 0,
-    BLUE:  cost.BLUE  ?? 0,
-    WHITE: cost.WHITE ?? 0,
-    GREEN: cost.GREEN ?? 0,
-  };
-}
-// Mapeia custos antigos ({B,R,G,Y}) para novos ({WHITE,RED,GREEN,BLUE})
-;
   }
   // já está no formato novo
   return {
@@ -396,8 +370,6 @@ export default function BattleUI() {
     </div>
   );
 }
-
-
 
 
 
