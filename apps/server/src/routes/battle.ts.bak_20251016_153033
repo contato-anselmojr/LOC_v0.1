@@ -80,12 +80,6 @@ function grantRandomEnergy(pool: EnergyPool, n = 1) {
     const c = colors[Math.floor(Math.random() * colors.length)];
     pool[c] = (pool[c] ?? 0) + 1;
   }
-
-
-// === contadores ===
-function aliveCount(p: PlayerState): number {
-  return p.characters.filter(c => c.alive).length;
-}
 }
 
 // === rota: iniciar batalha ===
@@ -131,12 +125,7 @@ router.post("/start", async (req, res) => {
     },
   };
 
-  // energia inicial: zerar e dar +1 ao jogador inicial
-state.energy.P1 = { B:0, R:0, G:0, Y:0 };
-state.energy.P2 = { B:0, R:0, G:0, Y:0 };
-grantRandomEnergy(state.energy[state.currentPlayerId], 1);
-
-battleStore.set(battleId, state);
+  battleStore.set(battleId, state);
 // turno 1: jogador inicial ganha 1 energia aleatória
 grantRandomEnergy(state.energy[state.currentPlayerId], 1);
 try {
@@ -245,5 +234,4 @@ router.post("/turn", async (req, res) => {
 });
 
 export default router;
-
 
