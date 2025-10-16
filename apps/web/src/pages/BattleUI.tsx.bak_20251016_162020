@@ -11,7 +11,7 @@ function normalizeBattle(b: any) {
     energy:  b.energy  ?? state?.energy  ?? {},
   };
 }
-type Color = "W" | "U" | "R" | "G";
+type Color = "B" | "R" | "G" | "Y";
 const roleIcon: Record<string, string> = { tank: "🛡️", mago: "🪄", assassino: "🗡️", adc: "🏹" };
 
 export default function BattleUI() {
@@ -282,4 +282,3 @@ export default function BattleUI() {
     </div>
   );
 }
-

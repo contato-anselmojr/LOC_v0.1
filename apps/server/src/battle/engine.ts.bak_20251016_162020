@@ -5,7 +5,7 @@
  *    • 1 ação por personagem por turno
  */
 
-export type Color = "W" | "U" | "R" | "G";
+export type Color = "B" | "R" | "G" | "Y";
 export type Cost = Partial<Record<Color, number>>;
 export type SkillKind = "attack" | "heal" | "buff" | "shield" | "control" | "damage";
 
@@ -60,7 +60,7 @@ export function consumeEnergy(pool: EnergyPool, cost: Cost) {
 }
 
 export function grantRandomEnergy(pool: EnergyPool, n = 1) {
-  const colors: Color[] = ["W","U","R","G"];
+  const colors: Color[] = ["B", "R", "G", "Y"];
   for (let i = 0; i < n; i++) {
     const c = colors[Math.floor(Math.random() * colors.length)];
     pool[c] = (pool[c] ?? 0) + 1;
@@ -69,10 +69,10 @@ export function grantRandomEnergy(pool: EnergyPool, n = 1) {
 
 // Skills básicas
 const SKILLS: Skill[] = [
-  { id: "strike",   name: "Golpe",   kind: "attack", cost: { W: 1 }, power: 25 },
+  { id: "strike",   name: "Golpe",   kind: "attack", cost: { B: 1 }, power: 25 },
   { id: "fireball", name: "Fireball",kind: "attack", cost: { R: 2 }, power: 40 },
   { id: "heal",     name: "Cura",    kind: "heal",   cost: { G: 1 }, power: 20 },
-  { id: "shield",   name: "Escudo",  kind: "shield", cost: { U: 1 }, power:  0 },
+  { id: "shield",   name: "Escudo",  kind: "shield", cost: { Y: 1 }, power:  0 },
 ];
 
 function cloneSkills(): Skill[] {
@@ -212,4 +212,3 @@ export function passTurn(battle: BattleState) {
 
   return battle;
 }
-
