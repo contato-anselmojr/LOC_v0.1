@@ -69,10 +69,6 @@ export default function BattleUI() {
   const cost = normalizeCost(rawCost);
   const keys: Array<"RED"|"BLUE"|"WHITE"|"GREEN"> = ["RED","BLUE","WHITE","GREEN"];
   return keys.every(k => (pool?.[k] ?? 0) >= (cost?.[k] ?? 0));
-};
-  const cost = normalizeCost(rawCost);
-  const keys: Array<"RED"|"BLUE"|"WHITE"|"GREEN"> = ["RED","BLUE","WHITE","GREEN"];
-  return keys.every(k => (pool?.[k] ?? 0) >= (cost?.[k] ?? 0));
 }).every(([c, q]: any) => (pool?.[c] ?? 0) >= (q ?? 0));
   }
 
@@ -84,9 +80,6 @@ export default function BattleUI() {
   if (sel && sel.playerId === pId && sel.charId === cId && sel.skillId === skill.id) {
     setSel(null);
   } else {
-    setSel({ playerId: pId, charId: cId, skillId: skill.id });
-  }
-} else {
     setSel({ playerId: pId, charId: cId, skillId: skill.id });
   }
 })) return;           // sem energia, não seleciona
@@ -370,7 +363,6 @@ export default function BattleUI() {
     </div>
   );
 }
-
 
 
 

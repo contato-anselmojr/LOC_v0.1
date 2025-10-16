@@ -8,29 +8,7 @@ function normalizeBattle(b: any) {
   return {
     ...b,
     players: b.players ?? state?.players ?? [],
-    energy:  b.energy  ?? state?.energy  ?? {}
-
-// Mapeia custos antigos ({B,R,G,Y}) para novos ({WHITE,RED,GREEN,BLUE})
-function normalizeCost(cost: any): Partial<Record<"RED"|"BLUE"|"WHITE"|"GREEN", number>> {
-  if (!cost) return {};
-  const hasOld = ("B" in cost) || ("R" in cost) || ("G" in cost) || ("Y" in cost);
-  if (hasOld) {
-    return {
-      WHITE: cost.B ?? 0,
-      RED:   cost.R ?? 0,
-      GREEN: cost.G ?? 0,
-      BLUE:  cost.Y ?? 0,
-    };
-  }
-  // já está no formato novo
-  return {
-    RED:   cost.RED   ?? 0,
-    BLUE:  cost.BLUE  ?? 0,
-    WHITE: cost.WHITE ?? 0,
-    GREEN: cost.GREEN ?? 0,
-  };
-}
-,
+    energy:  b.energy  ?? state?.energy  ?? {},
   };
 }
 type Color = "W" | "U" | "R" | "G";
@@ -64,32 +42,15 @@ export default function BattleUI() {
   const currentPlayerId: string | null = battle?.currentPlayerId ?? null;
   const energy = (pid: string) => battle?.energy?.[pid] ?? {};
 
-  function canPay(pid: string, rawCost: any) {
-  const pool = battle?.energy?.[pid] ?? {};
-  const cost = normalizeCost(rawCost);
-  const keys: Array<"RED"|"BLUE"|"WHITE"|"GREEN"> = ["RED","BLUE","WHITE","GREEN"];
-  return keys.every(k => (pool?.[k] ?? 0) >= (cost?.[k] ?? 0));
-};
-  const cost = normalizeCost(rawCost);
-  const keys: Array<"RED"|"BLUE"|"WHITE"|"GREEN"> = ["RED","BLUE","WHITE","GREEN"];
-  return keys.every(k => (pool?.[k] ?? 0) >= (cost?.[k] ?? 0));
-}).every(([c, q]: any) => (pool?.[c] ?? 0) >= (q ?? 0));
+  function canPay(pid: string, cost: Record<Color, number>) {
+    const pool = energy(pid);
+    return Object.entries(cost ?? {}).every(([c, q]: any) => (pool?.[c] ?? 0) >= (q ?? 0));
   }
 
   // 1 clique seleciona/descarta a skill
   function toggleSkill(pId: string, cId: string, skill: any) {
-  if (pId !== currentPlayerId) return;
-  const cost = normalizeCost(skill?.cost);
-  if (!canPay(pId, cost)) return;
-  if (sel && sel.playerId === pId && sel.charId === cId && sel.skillId === skill.id) {
-    setSel(null);
-  } else {
-    setSel({ playerId: pId, charId: cId, skillId: skill.id });
-  }
-} else {
-    setSel({ playerId: pId, charId: cId, skillId: skill.id });
-  }
-})) return;           // sem energia, não seleciona
+    if (pId !== currentPlayerId) return;                  // só o jogador do turno
+    if (!canPay(pId, skill.cost || {})) return;           // sem energia, não seleciona
     // 1 skill por personagem por turno (se já há ação do char na fila, não seleciona)
     if (queue.some(a => a.source?.charId === cId)) return;
 
@@ -246,7 +207,7 @@ export default function BattleUI() {
                 </div>
                 {/* Energia do jogador */}
                 <div className="flex items-center gap-2 text-[11px] opacity-80">
-                  {(["RED","BLUE","WHITE","GREEN"] as Color[]).map((c) => (
+                  {(["B","R","G","Y"] as Color[]).map((c) => (
                     <span key={c} className="px-1.5 py-0.5 rounded bg-black/40 border border-white/10">
                       {c}:{battle?.energy?.[p.id]?.[c] ?? 0}
                     </span>
@@ -370,8 +331,6 @@ export default function BattleUI() {
     </div>
   );
 }
-
-
 
 
 
