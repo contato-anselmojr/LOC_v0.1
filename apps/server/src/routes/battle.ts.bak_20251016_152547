@@ -126,9 +126,7 @@ router.post("/start", async (req, res) => {
   };
 
   battleStore.set(battleId, state);
-// turno 1: jogador inicial ganha 1 energia aleatória
-grantRandomEnergy(state.energy[state.currentPlayerId], 1);
-try {
+  try {
     await prisma.battle.create({ data: { player1: 1, player2: 2, state: state as any } });
   } catch (_) {}
   res.json({ battle: state });
@@ -210,21 +208,13 @@ router.post("/turn", async (req, res) => {
   }
 
   // === energia aleatória ao final ===
-    // === checar fim de combate ===
-  const p1 = battle.players.find(p => p.id === "P1")!;
-  const p2 = battle.players.find(p => p.id === "P2")!;
-  const aliveP1 = p1.characters.filter(c => c.alive).length;
-  const aliveP2 = p2.characters.filter(c => c.alive).length;
+  grantRandomEnergy(battle.energy["P1"], 1);
+  grantRandomEnergy(battle.energy["P2"], 1);
 
-  if (aliveP1 === 0 || aliveP2 === 0) {
-    (battle as any).status = "ended";
-  } else {
-    // passa o turno
-    // concede energia ao jogador que COMEÇA o novo turno
-    const next = battle.players.find(p => p.id === battle.currentPlayerId)!;
-    const give = next.characters.filter(c => c.alive).length;
-    grantRandomEnergy(battle.energy[battle.currentPlayerId], give);
-  }try {
+  battle.turn += 1;
+  battle.currentPlayerId = enemy;
+
+  try {
     await prisma.battle.create({
       data: { player1: 1, player2: 2, state: battle as any },
     });
@@ -234,4 +224,3 @@ router.post("/turn", async (req, res) => {
 });
 
 export default router;
-
