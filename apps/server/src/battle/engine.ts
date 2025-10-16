@@ -133,6 +133,12 @@ export function nextTurn(battle: any) {
   });
 
   battle.log.push(`🔁 Início do turno ${battle.turn}`);
+  // Atualiza energia global (espelho usado no front)
+  battle.energy = {};
+  battle.players.forEach((p: any) => {
+    battle.energy[p.id] = { ...p.energy };
+  });
+
   return battle;
 }
 
