@@ -158,4 +158,3 @@ function countAlive(battle: BattleState, pid: string): number {
   return player ? player.characters.filter((c) => c.alive).length : 0;
 }
 
-
