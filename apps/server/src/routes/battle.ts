@@ -1,258 +1,105 @@
 ﻿import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
+import { initBattle, declareAction, passTurn, grantRandomEnergy } from "../battle/engine";
+import type { BattleConfig, PlayerState, CharacterState, Skill } from "../battle/types";
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// === Tipos base ===
-type Color = "B" | "R" | "G" | "Y";
-type Cost = Partial<Record<Color, number>>;
-
-type Skill = {
-  id: string;
-  name: string;
-  kind: "attack" | "heal" | "buff" | "shield" | "control" | "damage";
-  cost: Cost;
-  power: number;
-};
-
-type CharacterState = {
-  id: string;
-  name: string;
-  role: "adc" | "tank" | "mago" | "assassino";
-  hp: number;
-  maxHp: number;
-  skills: Skill[];
-  alive: boolean;
-};
-
-type PlayerState = {
-  id: string;
-  name: string;
-  characters: CharacterState[];
-};
-
-type EnergyPool = Partial<Record<Color, number>>;
-
-type BattleState = {
-  id: string;
-  turn: number;
-  currentPlayerId: string;
-  players: PlayerState[];
-  energy: Record<string, EnergyPool>;
-};
-
-type DeclaredAction = {
-  source: { playerId: string; charId: string };
-  target: { playerId: string; charId: string };
-  skillId: string;
-};
-
-// === memória temporária ===
-const battleStore = new Map<string, BattleState>();
-const rid = () => Math.random().toString(36).slice(2, 10);
-
-// === skills básicas ===
-const SKILLS: Skill[] = [
-  { id: "strike", name: "Golpe", kind: "attack", cost: { B: 1 }, power: 25 },
-  { id: "fireball", name: "Fireball", kind: "attack", cost: { R: 2 }, power: 40 },
-  { id: "heal", name: "Cura", kind: "heal", cost: { G: 1 }, power: 20 },
-  { id: "shield", name: "Escudo", kind: "shield", cost: { Y: 1 }, power: 0 },
-];
-
-// === utilitários ===
-function cloneSkills(): Skill[] {
-  return SKILLS.map((s) => ({ ...s, cost: { ...s.cost } }));
+// === Helpers ===
+function aliveCount(p: any): number {
+  return p.characters.filter((c: any) => c.alive && c.hp > 0).length;
 }
 
-function hasEnergy(pool: EnergyPool, cost: Cost): boolean {
-  return Object.entries(cost).every(([c, q]) => (pool[c as Color] ?? 0) >= (q ?? 0));
-}
-function consumeEnergy(pool: EnergyPool, cost: Cost) {
-  Object.entries(cost).forEach(([c, q]) => {
-    const k = c as Color;
-    pool[k] = Math.max(0, (pool[k] ?? 0) - (q ?? 0));
-  });
-}
-function grantRandomEnergy(pool: EnergyPool, n = 1) {
-  const colors: Color[] = ["B", "R", "G", "Y"];
-  for (let i = 0; i < n; i++) {
-    const c = colors[Math.floor(Math.random() * colors.length)];
-    pool[c] = (pool[c] ?? 0) + 1;
-  }
-
-
-// === contadores ===
-function aliveCount(p: PlayerState): number {
-  return p.characters.filter(c => c.alive).length;
-}
-}
-
-// === rota: iniciar batalha ===
+// === Rotas ===
 router.post("/start", async (req, res) => {
-  const makeChar = (name: string, role: CharacterState["role"], idx: number): CharacterState => ({
-    id: rid() + "_c" + idx,
-    name,
-    role,
-    hp: 100,
-    maxHp: 100,
-    skills: cloneSkills(),
-    alive: true,
-  });
+  try {
+    const battleId = Math.random().toString(36).slice(2, 10);
+    const state = initBattle(battleId);
 
-  const battleId = rid();
-  const state: BattleState = {
-    id: battleId,
-    turn: 1,
-    currentPlayerId: "P1",
-    players: [
-      {
-        id: "P1",
-        name: "Jogador 1",
-        characters: [
-          makeChar("Raven", "assassino", 1),
-          makeChar("Boreal", "tank", 2),
-          makeChar("Lyra", "mago", 3),
-        ],
+    // ⚙️ Zerar energia inicial
+    state.energy = {
+      P1: { B: 0, R: 0, G: 0, Y: 0 },
+      P2: { B: 0, R: 0, G: 0, Y: 0 },
+    };
+
+    // 🎲 Jogador inicial ganha +1 energia aleatória
+    grantRandomEnergy(state.energy[state.currentPlayerId], 1);
+
+    await prisma.battle.create({
+      data: {
+        id: battleId,
+        status: "active",
+        turn: 1,
+        currentPlayerId: state.currentPlayerId,
+        state: JSON.stringify(state),
       },
-      {
-        id: "P2",
-        name: "Jogador 2",
-        characters: [
-          makeChar("Kai", "adc", 1),
-          makeChar("Nox", "assassino", 2),
-          makeChar("Oris", "mago", 3),
-        ],
-      },
-    ],
-    energy: {
-      P1: { B: 2, R: 0, G: 0, Y: 0 },
-      P2: { B: 2, R: 0, G: 0, Y: 0 },
-    },
-  };
+    });
 
-  // energia inicial: zerar e dar +1 ao jogador inicial
-state.energy.P1 = { B:0, R:0, G:0, Y:0 };
-state.energy.P2 = { B:0, R:0, G:0, Y:0 };
-grantRandomEnergy(state.energy[state.currentPlayerId], 1);
-
-battleStore.set(battleId, state);
-// turno 1: jogador inicial ganha 1 energia aleatória
-grantRandomEnergy(state.energy[state.currentPlayerId], 1);
-try {
-    await prisma.battle.create({ data: { player1: 1, player2: 2, state: state as any } });
-  } catch (_) {}
-  res.json({ battle: state });
+    res.json({ battle: state });
+  } catch (err) {
+    console.error("Erro em /api/start:", err);
+    res.status(500).json({ error: "Erro ao iniciar batalha" });
+  }
 });
 
-// === rota: processar turno ===
 router.post("/turn", async (req, res) => {
-  const { battleId, actions: rawActions } = req.body as {
-    battleId: string;
-    actions: DeclaredAction[];
-  };
+  try {
+    const { battleId, actions } = req.body;
+    const dbBattle = await prisma.battle.findUnique({ where: { id: battleId } });
+    if (!dbBattle) return res.status(404).json({ error: "Batalha não encontrada" });
 
-  const battle = battleStore.get(battleId);
-  if (!battle) return res.status(404).json({ error: "battle not found" });
+    const battle = JSON.parse(dbBattle.state);
+    const results: any[] = [];
 
-  const current = battle.currentPlayerId;
-  const enemy = current === "P1" ? "P2" : "P1";
-  const pool = battle.energy[current];
-  const results: any[] = [];
-
-  // === limitar 3 ações totais e 1 por personagem ===
-  const perChar: Record<string, boolean> = {};
-  let usedCount = 0;
-  const actions: DeclaredAction[] = [];
-  for (const a of rawActions ?? []) {
-    if (usedCount >= 3) continue;
-    if (perChar[a.source.charId]) continue;
-    actions.push(a);
-    perChar[a.source.charId] = true;
-    usedCount++;
-  }
-
-  for (const a of actions) {
-    const srcP = battle.players.find((p) => p.id === a.source.playerId);
-    const tgtP = battle.players.find((p) => p.id === a.target.playerId);
-    if (!srcP || !tgtP) continue;
-
-    const srcC = srcP.characters.find((c) => c.id === a.source.charId && c.alive);
-    const tgtC = tgtP.characters.find((c) => c.id === a.target.charId && c.alive);
-    if (!srcC || !tgtC) continue;
-
-    const skill = srcC.skills.find((s) => s.id === a.skillId);
-    if (!skill) continue;
-
-    // === Regra de alvo ===
-    const friendly = a.source.playerId === a.target.playerId;
-    const healingSkills = ["heal", "buff", "shield"];
-    const offensiveSkills = ["attack", "control", "damage"];
-    if (healingSkills.includes(skill.kind) && !friendly) continue;
-    if (offensiveSkills.includes(skill.kind) && friendly) continue;
-
-    if (!hasEnergy(pool, skill.cost)) {
-      results.push({ ok: false, reason: "no-energy", need: skill.cost, action: a });
-      continue;
+    // === Executar ações ===
+    if (Array.isArray(actions)) {
+      for (const act of actions) {
+        results.push(await declareAction(battle, act));
+      }
     }
 
-    consumeEnergy(pool, skill.cost);
+    // === Fim de turno ===
+    const p1 = battle.players.find((p: any) => p.id === "P1");
+    const p2 = battle.players.find((p: any) => p.id === "P2");
+    const aliveP1 = aliveCount(p1);
+    const aliveP2 = aliveCount(p2);
 
-    if (skill.kind === "attack" || skill.kind === "damage" || skill.kind === "control") {
-      tgtC.hp = Math.max(0, tgtC.hp - skill.power);
-      if (tgtC.hp === 0) tgtC.alive = false;
+    if (aliveP1 === 0 || aliveP2 === 0) {
+      battle.status = "ended";
       results.push({
-        ok: true,
-        type: "damage",
-        amount: skill.power,
-        target: tgtC.id,
-        skill: skill.id,
+        type: "end",
+        message: `🏁 Jogo encerrado — ${(aliveP1 === 0 ? "P2" : "P1")} venceu!`,
       });
-    } else if (skill.kind === "heal" || skill.kind === "buff" || skill.kind === "shield") {
-      srcC.hp = Math.min(srcC.maxHp, srcC.hp + skill.power);
+    } else {
+      // Alterna turno
+      const next = battle.currentPlayerId === "P1" ? "P2" : "P1";
+      battle.turn += 1;
+      battle.currentPlayerId = next;
+
+      // 💡 Ganho de energia baseado em personagens vivos
+      const player = battle.players.find((p: any) => p.id === next);
+      const gain = aliveCount(player);
+      grantRandomEnergy(battle.energy[next], gain);
+
       results.push({
-        ok: true,
-        type: "heal",
-        amount: skill.power,
-        target: srcC.id,
-        skill: skill.id,
+        type: "energy",
+        player: next,
+        amount: gain,
+        message: `⚡ ${next} ganhou +${gain} energias (${gain} vivos)`,
       });
     }
+
+    await prisma.battle.update({
+      where: { id: battleId },
+      data: { state: JSON.stringify(battle), turn: battle.turn, currentPlayerId: battle.currentPlayerId },
+    });
+
+    res.json({ battle, results });
+  } catch (err) {
+    console.error("Erro em /api/turn:", err);
+    res.status(500).json({ error: "Erro ao processar turno" });
   }
-
-  // === energia aleatória ao final ===
-    // === checar fim de combate ===
-  const p1 = battle.players.find(p => p.id === "P1")!;
-  const p2 = battle.players.find(p => p.id === "P2")!;
-  const aliveP1 = p1.characters.filter(c => c.alive).length;
-  const aliveP2 = p2.characters.filter(c => c.alive).length;
-
-  if (aliveP1 === 0 || aliveP2 === 0) {
-    (battle as any).status = "ended";
-  } else {
-    // passa o turno
-    // concede energia ao jogador que COMEÇA o novo turno
-    const next = battle.players.find(p => p.id === battle.currentPlayerId)!;
-    const give = next.characters.filter(c => c.alive).length;
-    grantRandomEnergy(battle.energy[battle.currentPlayerId], give);
-    (results as any[]).push({
-      type: "energy",
-      player: battle.currentPlayerId,
-      amount: give,
-      message: `⚡ ${battle.currentPlayerId} ganhou +${give} energias (${give} vivos)`
-    });
-
-  }try {
-    await prisma.battle.create({
-      data: { player1: 1, player2: 2, state: battle as any },
-    });
-  } catch (_) {}
-
-  res.json({ battle, results });
 });
 
 export default router;
-
-
-
-
