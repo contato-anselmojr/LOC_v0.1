@@ -53,10 +53,66 @@ export function grantRandomEnergy(pool: Record<string, number>, amount: number) 
   }
 }
 
-// (placeholders para manter compatibilidade)
-export async function declareAction(battle: any, act: any) {
-  return { ok: true, type: "none" };
+// === Executar ação ===
+export function declareAction(battle: BattleState, act: any) {
+  const results: any[] = [];
+  const src = findChar(battle, act.source.playerId, act.source.charId);
+  const tgt = findChar(battle, act.target.playerId, act.target.charId);
+  if (!src || !tgt) {
+    results.push({ ok: false, reason: "Personagem inválido" });
+    return results;
+  }
+
+  const skill = src.skills.find((s) => s.id === act.skillId);
+  if (!skill) {
+    results.push({ ok: false, reason: "Skill inválida" });
+    return results;
+  }
+
+  // Checa energia
+  const pool = battle.energy[act.source.playerId];
+  const canPay = Object.entries(skill.cost).every(([c, q]) => (pool[c] ?? 0) >= q);
+  if (!canPay) {
+    results.push({ ok: false, reason: "Energia insuficiente" });
+    return results;
+  }
+
+  // Consome energia
+  for (const [c, q] of Object.entries(skill.cost)) pool[c] -= q;
+
+  if (skill.kind === "attack") {
+    tgt.hp = Math.max(0, tgt.hp - skill.power);
+    if (tgt.hp === 0) tgt.alive = false;
+    results.push({ ok: true, type: "damage", skill: skill.name, amount: skill.power, target: tgt.name });
+  } else if (skill.kind === "heal") {
+    tgt.hp = Math.min(tgt.maxHp, tgt.hp + skill.power);
+    results.push({ ok: true, type: "heal", skill: skill.name, amount: skill.power, target: tgt.name });
+  } else if (skill.kind === "shield") {
+    results.push({ ok: true, type: "buff", skill: skill.name, effect: "Escudo ativado" });
+  }
+
+  return results;
 }
-export async function passTurn(battle: any) {
+
+// === Passar turno ===
+export function passTurn(battle: BattleState) {
+  const next = battle.currentPlayerId === "P1" ? "P2" : "P1";
+  battle.currentPlayerId = next;
+  battle.turn += 1;
+
+  const aliveCount = countAlive(battle, next);
+  grantRandomEnergy(battle.energy[next], aliveCount);
+
   return battle;
+}
+
+// === Auxiliares ===
+function findChar(battle: BattleState, pid: string, cid: string): CharacterState | null {
+  const player = battle.players.find((p) => p.id === pid);
+  return player?.characters?.find((c) => c.id === cid) ?? null;
+}
+
+function countAlive(battle: BattleState, pid: string): number {
+  const player = battle.players.find((p) => p.id === pid);
+  return player ? player.characters.filter((c) => c.alive).length : 0;
 }
