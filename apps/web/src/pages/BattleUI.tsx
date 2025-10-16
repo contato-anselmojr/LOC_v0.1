@@ -363,7 +363,7 @@ async function startBattle() {
       <div className="max-w-6xl mx-auto px-4 -mt-2 mb-4 flex items-center gap-3">
         <button
           onClick={passTurn}
-          disabled={submitting || queue.length === 0 || currentPlayerId == null}
+          disabled={submitting || currentPlayerId == null}
           className="px-4 py-2 rounded-xl bg-indigo-600 disabled:opacity-50 hover:bg-indigo-700 transition-all"
         >
           ▶️ Passar turno ({queue.length})
