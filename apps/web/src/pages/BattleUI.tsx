@@ -138,7 +138,7 @@ async function startBattle() {
   try {
     const res = await axios.post("/api/turn", {
       battleId: battle.id,
-      actions: queue, // pode estar vazio
+      actions: queue,
     });
 
     const updated = normalizeBattle(res.data.battle);
@@ -146,18 +146,9 @@ async function startBattle() {
     setQueue([]);
     setSel(null);
 
-    const lines = (res.data.results ?? []).map((r: any) => {
-      if (!r.ok) return `❌ Falha: ${r.reason}`;
-      if (r.type === "damage") return `⚔️ ${r.skill} causou ${r.amount} em ${r.target}`;
-      if (r.type === "heal") return `💚 ${r.skill} curou ${r.amount} em ${r.target}`;
-      return r.reason ?? JSON.stringify(r);
-    });
-
-    setLogConsole((prev) => [
-      ...prev.slice(-30),
-      `🔁 Início do turno ${updated.turn}`,
-      ...lines,
-    ]);
+    // 🔄 Atualiza log completo do backend
+    const serverLog = updated.log ?? [];
+    setLogConsole(serverLog.slice(-30));
   } catch (err) {
     console.error(err);
     setLogConsole((prev) => [...prev, "⚠️ Erro ao processar turno"]);
@@ -165,6 +156,7 @@ async function startBattle() {
     setSubmitting(false);
   }
 }
+
 
 
   if (!battle) {

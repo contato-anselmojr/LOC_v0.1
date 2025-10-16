@@ -111,55 +111,54 @@ export function nextTurn(battle: any) {
   battle.turn += 1;
   battle.currentPlayerId = nextPlayer;
 
-  // Controle de energia gerada para log
   const turnReport: string[] = [];
 
-  // Geração de energia conforme turno
-  battle.players.forEach((p: any, idx: number) => {
-    const vivos = p.characters?.filter((c: any) => c.hp > 0) ?? [];
-    const ganhos: Record<string, number> = { RED: 0, BLUE: 0, WHITE: 0, GREEN: 0 };
+  // Identifica o jogador ativo neste turno
+  const jogadorAtivo = battle.players.find((p: any) => p.id === nextPlayer);
+  if (!jogadorAtivo) return battle;
 
-    // Primeiro turno → apenas o jogador inicial ganha
-    if (battle.turn === 2 && idx === 0) {
-      vivos.forEach(() => {
-        const e = randomEnergy();
-        p.energy[e]++;
-        ganhos[e]++;
-      });
-    }
+  const vivos = jogadorAtivo.characters?.filter((c: any) => c.hp > 0) ?? [];
+  const ganhos: Record<string, number> = { RED: 0, BLUE: 0, WHITE: 0, GREEN: 0 };
 
-    // Turnos seguintes → todos ganham
-    if (battle.turn > 2) {
-      vivos.forEach(() => {
-        const e = randomEnergy();
-        p.energy[e]++;
-        ganhos[e]++;
-      });
-    }
+  // 🎯 Turno 1 → apenas o jogador inicial ganha 1 energia total
+  if (battle.turn === 1) {
+    const e = randomEnergy();
+    jogadorAtivo.energy[e]++;
+    ganhos[e]++;
+  }
 
-    // adiciona ao relatório de log
-    const ganhosTxt = Object.entries(ganhos)
-      .filter(([_, v]) => v > 0)
-      .map(([k, v]) => `${k}+${v}`)
-      .join(", ");
+  // 🔄 Turnos seguintes → apenas o jogador ativo ganha energia
+  if (battle.turn > 1) {
+    vivos.forEach(() => {
+      const e = randomEnergy();
+      jogadorAtivo.energy[e]++;
+      ganhos[e]++;
+    });
+  }
 
-    if (ganhosTxt)
-      turnReport.push(`🟢 ${p.name} ganhou ${ganhosTxt}`);
-  });
+  // Registro de log
+  const ganhosTxt = Object.entries(ganhos)
+    .filter(([_, v]) => v > 0)
+    .map(([k, v]) => `${k}+${v}`)
+    .join(", ");
+
+  if (ganhosTxt) {
+    turnReport.push(`🟢 ${jogadorAtivo.name} ganhou ${ganhosTxt}`);
+  } else {
+    turnReport.push(`⚠️ ${jogadorAtivo.name} não ganhou energia neste turno`);
+  }
 
   // Atualiza energia global (HUD)
-  battle.energy = {};
+  // 🔧 Corrigido: apenas reflete os valores atuais (sem sobrescrever tudo)
+  if (!battle.energy) battle.energy = {};
   battle.players.forEach((p: any) => {
+    // mantém energia existente do oponente, atualiza apenas o jogador ativo
     battle.energy[p.id] = { ...p.energy };
   });
 
   // Log do turno
   battle.log.push(`🔁 Início do turno ${battle.turn}`);
-  if (turnReport.length > 0) {
-    battle.log.push(...turnReport);
-  } else {
-    battle.log.push("⚠️ Nenhum ganho de energia neste turno");
-  }
+  battle.log.push(...turnReport);
 
   return battle;
 }
