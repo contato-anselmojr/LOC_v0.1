@@ -79,41 +79,34 @@ export default function BattleUI() {
   const currentPlayerId: string | null = battle?.currentPlayerId ?? null;
   const energy = (pid: string) => battle?.energy?.[pid] ?? {};
 
-  function canPay(pid: string, rawCost: any) {
+ // Verifica se o jogador tem energia suficiente
+ function canPay(pid: string, rawCost: any) {
   const pool = battle?.energy?.[pid] ?? {};
   const cost = normalizeCost(rawCost);
-  const keys: Array<"RED"|"BLUE"|"WHITE"|"GREEN"> = ["RED","BLUE","WHITE","GREEN"];
-  return keys.every(k => (pool?.[k] ?? 0) >= (cost?.[k] ?? 0));
-};
-  const cost = normalizeCost(rawCost);
-  const keys: Array<"RED"|"BLUE"|"WHITE"|"GREEN"> = ["RED","BLUE","WHITE","GREEN"];
-  return keys.every(k => (pool?.[k] ?? 0) >= (cost?.[k] ?? 0));
-}).every(([c, q]: any) => (pool?.[c] ?? 0) >= (q ?? 0));
-  }
-
-  // 1 clique seleciona/descarta a skill
+  const keys: Array<"RED" | "BLUE" | "WHITE" | "GREEN"> = ["RED", "BLUE", "WHITE", "GREEN"];
+  return keys.every((k) => (pool?.[k] ?? 0) >= (cost?.[k] ?? 0));
+}
+  // Seleciona ou desmarca uma skill
   function toggleSkill(pId: string, cId: string, skill: any) {
-  if (pId !== currentPlayerId) return;
-  const cost = normalizeCost(skill?.cost);
-  if (!canPay(pId, cost)) return;
-  if (sel && sel.playerId === pId && sel.charId === cId && sel.skillId === skill.id) {
-    setSel(null);
-  } else {
-    setSel({ playerId: pId, charId: cId, skillId: skill.id });
-  }
-} else {
-    setSel({ playerId: pId, charId: cId, skillId: skill.id });
-  }
-})) return;           // sem energia, não seleciona
-    // 1 skill por personagem por turno (se já há ação do char na fila, não seleciona)
+    // Só pode agir no próprio turno
+    if (pId !== currentPlayerId) return;
+
+    // Verifica custo e energia
+    const cost = normalizeCost(skill?.cost);
+    if (!canPay(pId, cost)) return; // sem energia, não seleciona
+
+    // Cada personagem pode agir apenas uma vez por turno
     if (queue.some(a => a.source?.charId === cId)) return;
 
+    // Alterna seleção
     if (sel && sel.playerId === pId && sel.charId === cId && sel.skillId === skill.id) {
       setSel(null); // desfaz seleção
     } else {
       setSel({ playerId: pId, charId: cId, skillId: skill.id });
     }
   }
+
+
 
   // Clique em um alvo (quando existe uma skill selecionada)
   function clickTarget(pId: string, cId: string) {
