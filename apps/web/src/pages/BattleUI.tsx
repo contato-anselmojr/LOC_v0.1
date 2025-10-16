@@ -133,28 +133,39 @@ async function startBattle() {
   }
 
   async function passTurn() {
-    if (!battle || queue.length === 0) return;
-    setSubmitting(true);
-    try {
-      const res = await axios.post("/api/turn", { battleId: battle.id, actions: queue });
-      setBattle(normalizeBattle(res.data.battle));
-      setQueue([]);
-      setSel(null);
+  if (!battle) return;
+  setSubmitting(true);
+  try {
+    const res = await axios.post("/api/turn", {
+      battleId: battle.id,
+      actions: queue, // pode estar vazio
+    });
 
-      const lines = (res.data.results ?? []).map((r: any) => {
-        if (!r.ok) return `❌ Falha: ${r.reason}`;
-        if (r.type === "damage") return `⚔️ ${r.skill} causou ${r.amount} em ${r.target}`;
-        if (r.type === "heal")   return `💚 ${r.skill} curou ${r.amount} em ${r.target}`;
-        return JSON.stringify(r);
-      });
-      setLogConsole((prev) => [...prev.slice(-30), `--- TURNO ${res.data.battle.turn - 1} ---`, ...lines]);
-    } catch (err) {
-      console.error(err);
-      setLogConsole((prev) => [...prev, "⚠️ Erro no turno"]);
-    } finally {
-      setSubmitting(false);
-    }
+    const updated = normalizeBattle(res.data.battle);
+    setBattle(updated);
+    setQueue([]);
+    setSel(null);
+
+    const lines = (res.data.results ?? []).map((r: any) => {
+      if (!r.ok) return `❌ Falha: ${r.reason}`;
+      if (r.type === "damage") return `⚔️ ${r.skill} causou ${r.amount} em ${r.target}`;
+      if (r.type === "heal") return `💚 ${r.skill} curou ${r.amount} em ${r.target}`;
+      return r.reason ?? JSON.stringify(r);
+    });
+
+    setLogConsole((prev) => [
+      ...prev.slice(-30),
+      `🔁 Início do turno ${updated.turn}`,
+      ...lines,
+    ]);
+  } catch (err) {
+    console.error(err);
+    setLogConsole((prev) => [...prev, "⚠️ Erro ao processar turno"]);
+  } finally {
+    setSubmitting(false);
   }
+}
+
 
   if (!battle) {
     return (
