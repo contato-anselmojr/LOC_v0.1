@@ -60,21 +60,29 @@ export default function BattleUI() {
   const [submitting, setSubmitting] = useState(false);
   const [logConsole, setLogConsole] = useState<string[]>([]);
 
-  async function startBattle() {
-    setLoading(true);
-    try {
-      const res = await axios.post("/api/start");
-      setBattle(normalizeBattle(res.data.battle));
-      setLogConsole((prev) => [...prev, "🕹️ Nova batalha iniciada!", `Turno ${res.data.battle.turn}`]);
-      setQueue([]);
-      setSel(null);
-    } catch (err) {
-      console.error(err);
-      setLogConsole((prev) => [...prev, "⚠️ Erro ao iniciar batalha"]);
-    } finally {
-      setLoading(false);
-    }
+async function startBattle() {
+  setLoading(true);
+  try {
+    const res = await axios.post("/api/start", {
+      player1Id: "player1",
+      player2Id: "player2",
+    });
+    setBattle(normalizeBattle(res.data));
+    setLogConsole((prev) => [
+      ...prev,
+      "🕹️ Nova batalha iniciada!",
+      `Turno ${res.data.turn}`,
+    ]);
+    setQueue([]);
+    setSel(null);
+  } catch (err) {
+    console.error(err);
+    setLogConsole((prev) => [...prev, "⚠️ Erro ao iniciar batalha"]);
+  } finally {
+    setLoading(false);
   }
+}
+
 
   const currentPlayerId: string | null = battle?.currentPlayerId ?? null;
   const energy = (pid: string) => battle?.energy?.[pid] ?? {};
