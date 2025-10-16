@@ -1,0 +1,240 @@
+﻿  import { useState } from "react";
+  import { motion } from "framer-motion";
+  import axios from "axios";
+
+
+  function normalizeBattle(b: any) {
+    if (!b) return b;
+    const state = typeof b?.state === "string" ? JSON.parse(b.state) : b?.state;
+    return {
+      ...b,
+      players: b.players ?? state?.players ?? [],
+      energy:  b.energy  ?? state?.energy  ?? {},
+    };
+  }
+  // Ícones simples por função
+  const roleIcon: Record<string, string> = { tank: "🛡️", mago: "🪄", assassino: "🗡️", adc: "🏹" };
+  type Color = "B" | "R" | "G" | "Y";
+
+  export default function BattleUI() {
+    const [battle, setBattle] = useState<any>(null);
+    const [loading, setLoading] = useState(false);
+
+    const [sel, setSel] = useState<null | { playerId: string; charId: string; skillId: string }>(null);
+    const [queue, setQueue] = useState<any[]>([]);
+    const [submitting, setSubmitting] = useState(false);
+    const [logConsole, setLogConsole] = useState<string[]>([]);
+
+    async function startBattle() {
+      setLoading(true);
+      try {
+        const res = await axios.post("/api/start");
+        setBattle(normalizeBattle(res.data.battle));
+        setLogConsole((prev) => [
+          ...prev,
+          "🕹️ Nova batalha iniciada!",
+          `Turno ${res.data.battle.turn}`,
+        ]);
+        setQueue([]);
+        setSel(null);
+      } catch (err) {
+        console.error(err);
+        setLogConsole((prev) => [...prev, "⚠️ Erro ao iniciar batalha"]);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    const currentPlayerId: string | null = battle?.currentPlayerId ?? null;
+    const energy = (pid: string) => battle?.energy?.[pid] ?? {};
+
+    function canPay(pid: string, cost: Record<Color, number>) {
+      const pool = energy(pid);
+      return Object.entries(cost ?? {}).every(([c, q]: any) => (pool?.[c] ?? 0) >= (q ?? 0));
+    }
+
+    function toggleSkill(pId: string, cId: string, skill: any) {
+      if (pId !== currentPlayerId) return;
+      if (!canPay(pId, skill.cost || {})) return;
+      if (sel && sel.playerId === pId && sel.charId === cId && sel.skillId === skill.id) {
+        setSel(null);
+      } else {
+        setSel({ playerId: pId, charId: cId, skillId: skill.id });
+      }
+    }
+
+    function clickTarget(pId: string, cId: string) {
+      if (!sel) return;
+      if (pId === sel.playerId) return;
+
+      const action = {
+        source: { playerId: sel.playerId, charId: sel.charId },
+        target: { playerId: pId, charId: cId },
+        skillId: sel.skillId,
+      };
+      setQueue((q) => [...q, action]);
+      setSel(null);
+    }
+
+    async function passTurn() {
+      if (!battle || queue.length === 0) return;
+      setSubmitting(true);
+      try {
+        const res = await axios.post("/api/turn", { battleId: battle.id, actions: queue });
+        setBattle(normalizeBattle(res.data.battle));
+        setQueue([]);
+        setSel(null);
+
+        const lines = (res.data.results ?? []).map((r: any) => {
+          if (!r.ok) return `❌ Falha: ${r.reason}`;
+          if (r.type === "damage") return `⚔️ ${r.skill} causou ${r.amount} em ${r.target}`;
+          if (r.type === "heal") return `💚 ${r.skill} curou ${r.amount} em ${r.target}`;
+          return JSON.stringify(r);
+        });
+
+        setLogConsole((prev) => [
+          ...prev.slice(-30),
+          `--- TURNO ${res.data.battle.turn - 1} ---`,
+          ...lines,
+        ]);
+      } catch (err) {
+        console.error(err);
+        setLogConsole((prev) => [...prev, "⚠️ Erro no turno"]);
+      } finally {
+        setSubmitting(false);
+      }
+    }
+
+    if (!battle) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen text-white bg-gray-900">
+          <h1 className="text-3xl font-bold mb-6">Arena Multiverso ⚔️</h1>
+          <button
+            onClick={startBattle}
+            disabled={loading}
+            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-2xl font-semibold transition-all"
+          >
+            {loading ? "Iniciando..." : "🕹️ Iniciar Batalha"}
+          </button>
+          <p className="mt-3 text-xs opacity-70">Clique em “Iniciar” para gerar a batalha.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen text-white bg-gray-900">
+        {/* Topbar */}
+        <div className="backdrop-blur-sm bg-black/40">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-lg font-semibold tracking-wide">Arena Multiverso — Clássico</span>
+            </div>
+            <div className="text-sm opacity-80">
+              Turno <span className="font-semibold">{battle.turn}</span> • Atual:{" "}
+              <span className="font-semibold">{battle.currentPlayerId}</span>
+            </div>
+          </div>
+        </div>
+
+        {Array.isArray(battle?.players) && (
+  <div className="max-w-6xl mx-auto px-4 py-6 grid grid-cols-2 gap-6">
+    {battle.players.map((p: any, pIndex: number) => (
+      <motion.div
+        key={p.id ?? pIndex}
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: pIndex * 0.2 }}
+        className="rounded-2xl bg-black/35 border border-white/10 shadow-xl overflow-hidden p-4"
+      >
+        {/* Cabeçalho do jogador */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="relative w-10 h-10 rounded bg-white/10 grid place-items-center text-xs opacity-80">
+              {(p.name?.slice?.(0, 1)?.toUpperCase?.() ?? p.id?.slice?.(0, 1) ?? "?")}
+            </div>
+            <div>
+              <div className="font-semibold tracking-wide">
+                {p.name ?? `Jogador ${pIndex + 1}`} {p.id === battle.currentPlayerId && "👑"}
+              </div>
+              <div className="text-[10px] uppercase opacity-60">Rank — Provisório</div>
+            </div>
+          </div>
+          <span className="text-xs opacity-70">Role: {p.role ?? "?"}</span>
+        </div>
+
+        {/* HP e skills */}
+        <div className="h-2 bg-gray-800 rounded overflow-hidden mb-2">
+          <div className="h-full bg-green-500" style={{ width: `${(p.hp / p.maxHp) * 100}%` }}></div>
+        </div>
+
+        <div className="grid grid-cols-4 gap-1 mb-2">
+          {p.skills?.slice(0, 4).map((s: any) => (
+            <button
+              key={s.id}
+              className="text-xs bg-blue-700/50 hover:bg-blue-700 text-white rounded p-1 transition-all"
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+
+        {/* Passiva */}
+        <div className="text-xs text-amber-300 mb-2">
+          🌀 Passiva: <span className="text-white/90">Em desenvolvimento</span>
+        </div>
+
+        {/* Slots de item */}
+        <div className="flex gap-1 justify-center mb-2">
+          <div className="w-6 h-6 border border-white/20 bg-black/30 rounded-md"></div>
+          <div className="w-6 h-6 border border-white/20 bg-black/30 rounded-md"></div>
+        </div>
+
+        {/* Personagens (c.characters) */}
+        {Array.isArray(p.characters) && (
+          <div className="grid grid-cols-3 gap-3 mt-2">
+            {p.characters.map((c: any, i: number) => (
+              <motion.div
+                key={c.id ?? i}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.2 + i * 0.1 }}
+                className="relative rounded-xl bg-white/5 border border-white/10 overflow-hidden p-2"
+              >
+                <div className="relative h-20 grid place-items-center">
+                  <div className="w-[60px] h-[60px] rounded bg-black/30 border border-white/10 grid place-items-center text-xs text-white/70">
+                    {({ tank: "🛡️", mago: "🪄", assassino: "🗡️", adc: "🏹" } as any)[c.role] ?? "❔"}
+                  </div>
+                  <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between text-[10px]">
+                    <span className="px-1 rounded bg-black/60">{c.name}</span>
+                    <span className="px-1 rounded bg-black/60">{c.role}</span>
+                  </div>
+                </div>
+                <div className="h-2.5 bg-black/50 rounded overflow-hidden border border-white/10 mt-2">
+                  <motion.div
+                    initial={{ width: "0%" }}
+                    animate={{ width: `${Math.max(0, Math.min(100, (c.hp / c.maxHp) * 100))}%` }}
+                    transition={{ duration: 0.8 }}
+                    className="h-full bg-gradient-to-r from-green-500 to-lime-400"
+                  />
+                </div>
+                <div className="flex items-center justify-between mt-1 text-[10px] opacity-80">
+                  <span className="px-1 rounded bg-black/40 border border-white/10">
+                    {c.hp}/{c.maxHp}
+                  </span>
+                  <span className="px-1 rounded bg-black/40 border border-white/10">
+                    {({ tank: "🛡️", mago: "🪄", assassino: "🗡️", adc: "🏹" } as any)[c.role] ?? "❔"}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </motion.div>
+    ))}
+  </div>
+)}
+
+
+
+
+

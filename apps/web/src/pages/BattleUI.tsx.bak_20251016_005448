@@ -1,0 +1,15 @@
+﻿      </div>
+    )}
+  </div>
+
+  {/* Console de log */}
+  <div className="max-w-6xl mx-auto px-4 pb-8 mt-6">
+    <div className="rounded-2xl border border-white/10 bg-black/40 p-3 h-48 overflow-y-auto text-xs font-mono">
+      {logConsole.slice().reverse().map((line, i) => (
+        <div key={i} className="opacity-80">{line}</div>
+      ))}
+    </div>
+  </div>
+</div>
+  );
+}
