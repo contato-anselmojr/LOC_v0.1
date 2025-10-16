@@ -2,65 +2,54 @@
 import { motion } from "framer-motion";
 import axios from "axios";
 
+// === Corrige estado inicial de batalha ===
 function normalizeBattle(b: any) {
   if (!b) return b;
   const state = typeof b?.state === "string" ? JSON.parse(b.state) : b?.state;
   return {
     ...b,
     players: b.players ?? state?.players ?? [],
-    energy:  b.energy  ?? state?.energy  ?? {}
-function normalizeCost(cost) {
-  if (!cost) return {};
-  const hasOld = ('B' in cost) || ('R' in cost) || ('G' in cost) || ('Y' in cost);
-  if (hasOld) {
-    return {
-      WHITE: cost.B ?? 0,
-      RED:   cost.R ?? 0,
-      GREEN: cost.G ?? 0,
-      BLUE:  cost.Y ?? 0
-    };
-  }
-  return {
-    RED:   cost.RED   ?? 0,
-    BLUE:  cost.BLUE  ?? 0,
-    WHITE: cost.WHITE ?? 0,
-    GREEN: cost.GREEN ?? 0
+    energy: b.energy ?? state?.energy ?? {},
   };
 }
 
-;
-  const hasOld = ("B" in cost) || ("R" in cost) || ("G" in cost) || ("Y" in cost);
+// === Conversão de custos antigos para novos ===
+// (B,R,G,Y) → (WHITE, RED, GREEN, BLUE)
+
+function normalizeCost(cost: any) {
+  if (!cost) return {};
+  const hasOld =
+    ("B" in cost) || ("R" in cost) || ("G" in cost) || ("Y" in cost);
+
   if (hasOld) {
     return {
       WHITE: cost.B ?? 0,
-      RED:   cost.R ?? 0,
+      RED: cost.R ?? 0,
       GREEN: cost.G ?? 0,
-      BLUE:  cost.Y ?? 0,
+      BLUE: cost.Y ?? 0,
     };
   }
+
+  // formato novo
   return {
-    RED:   cost.RED   ?? 0,
-    BLUE:  cost.BLUE  ?? 0,
+    RED: cost.RED ?? 0,
+    BLUE: cost.BLUE ?? 0,
     WHITE: cost.WHITE ?? 0,
     GREEN: cost.GREEN ?? 0,
   };
 }
-// Mapeia custos antigos ({B,R,G,Y}) para novos ({WHITE,RED,GREEN,BLUE})
-;
-  }
-  // já está no formato novo
-  return {
-    RED:   cost.RED   ?? 0,
-    BLUE:  cost.BLUE  ?? 0,
-    WHITE: cost.WHITE ?? 0,
-    GREEN: cost.GREEN ?? 0,
-  };
-}
-,
-  };
-}
-type Color = "W" | "U" | "R" | "G";
-const roleIcon: Record<string, string> = { tank: "🛡️", mago: "🪄", assassino: "🗡️", adc: "🏹" };
+
+// === Ícones de classe ===
+const roleIcon: Record<string, string> = {
+  tank: "🛡️",
+  mago: "🪄",
+  assassino: "🗡️",
+  adc: "🏹",
+};
+
+// === Tipos de energia ===
+type Color = "RED" | "BLUE" | "WHITE" | "GREEN";
+
 
 export default function BattleUI() {
   const [battle, setBattle] = useState<any>(null);
