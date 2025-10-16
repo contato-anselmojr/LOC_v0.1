@@ -1,106 +1,84 @@
 ﻿import { Router } from "express";
 import { PrismaClient } from "@prisma/client";
-import { initBattle, declareAction, passTurn, grantRandomEnergy } from "../battle/engine";
-import type { BattleConfig, PlayerState, CharacterState, Skill } from "../battle/types";
+import {
+  initBattle,
+  declareAction,
+  passTurn,
+  type BattleState,
+} from "../battle/engine";
 
 const router = Router();
 const prisma = new PrismaClient();
 
-// === Helpers ===
-function aliveCount(p: any): number {
-  return p.characters.filter((c: any) => c.alive && c.hp > 0).length;
-}
+// memória in-memory (estável o bastante p/ dev)
+const store = new Map<string, BattleState>();
 
-// === Rotas ===
-router.post("/start", async (req, res) => {
+// === POST /api/start ===
+router.post("/start", async (_req, res) => {
   try {
-    const battleId = Math.random().toString(36).slice(2, 10);
-    const state = initBattle(battleId);
+    const b = initBattle();
+    store.set(b.id, b);
 
-    // ⚙️ Zerar energia inicial
-    state.energy = {
-      P1: { B: 0, R: 0, G: 0, Y: 0 },
-      P2: { B: 0, R: 0, G: 0, Y: 0 },
-    };
+    // grava “snapshot” opcional (não bloqueia se falhar)
+    try {
+      await prisma.battle.create({
+        data: { player1: 1, player2: 2, state: b as any },
+      });
+    } catch (_e) {}
 
-    // 🎲 Jogador inicial ganha +1 energia aleatória
-    grantRandomEnergy(state.energy[state.currentPlayerId], 1);
-
-    await prisma.battle.create({
-      data: {
-        id: battleId,
-        status: "active",
-        turn: 1,
-        currentPlayerId: state.currentPlayerId,
-        state: JSON.stringify(state),
-      },
-    });
-
-    res.json({ battle: state });
-  } catch (err) {
-    console.error("Erro em /api/start:", err);
-    res.status(500).json({ error: "Erro ao iniciar batalha" });
+    return res.json({ battle: b });
+  } catch (e: any) {
+    console.error("Erro em /api/start:", e);
+    return res.status(500).json({ error: "engine-start-failed", message: e?.message });
   }
 });
 
+// === POST /api/turn ===
 router.post("/turn", async (req, res) => {
   try {
-    const { battleId, actions } = req.body;
-    const dbBattle = await prisma.battle.findUnique({ where: { id: battleId } });
-    if (!dbBattle) return res.status(404).json({ error: "Batalha não encontrada" });
+    const { battleId, actions = [] } = req.body as {
+      battleId: string;
+      actions: Array<{
+        source: { playerId: string; charId: string };
+        target: { playerId: string; charId: string };
+        skillId: string;
+      }>;
+    };
 
-    const battle = JSON.parse(dbBattle.state);
+    const b = store.get(battleId);
+    if (!b) {
+      return res.status(404).json({ error: "battle-not-found" });
+    }
+
     const results: any[] = [];
 
-    // === Executar ações ===
-    if (Array.isArray(actions)) {
-      for (const act of actions) {
-        results.push(await declareAction(battle, act));
+    // aplica ações uma a uma; qualquer erro vira resultado, não 500
+    for (const act of actions) {
+      try {
+        const r = declareAction(b, act);
+        results.push(...r);
+      } catch (e: any) {
+        results.push({ ok: false, reason: "engine-error", message: e?.message });
       }
     }
 
-    // === Fim de turno ===
-    const p1 = battle.players.find((p: any) => p.id === "P1");
-    const p2 = battle.players.find((p: any) => p.id === "P2");
-    const aliveP1 = aliveCount(p1);
-    const aliveP2 = aliveCount(p2);
+    // alterna o turno e gera energia do PRÓXIMO jogador (1 por vivo)
+    passTurn(b);
 
-    if (aliveP1 === 0 || aliveP2 === 0) {
-      battle.status = "ended";
-      results.push({
-        type: "end",
-        message: `🏁 Jogo encerrado — ${(aliveP1 === 0 ? "P2" : "P1")} venceu!`,
+    store.set(b.id, b);
+
+    // snapshot opcional
+    try {
+      await prisma.battle.create({
+        data: { player1: 1, player2: 2, state: b as any },
       });
-    } else {
-      // Alterna turno
-      const next = battle.currentPlayerId === "P1" ? "P2" : "P1";
-      battle.turn += 1;
-      battle.currentPlayerId = next;
+    } catch (_e) {}
 
-      // 💡 Ganho de energia baseado em personagens vivos
-      const player = battle.players.find((p: any) => p.id === next);
-      const gain = aliveCount(player);
-      grantRandomEnergy(battle.energy[next], gain);
-
-      results.push({
-        type: "energy",
-        player: next,
-        amount: gain,
-        message: `⚡ ${next} ganhou +${gain} energias (${gain} vivos)`,
-      });
-    }
-
-    await prisma.battle.update({
-      where: { id: battleId },
-      data: { state: JSON.stringify(battle), turn: battle.turn, currentPlayerId: battle.currentPlayerId },
-    });
-
-    res.json({ battle, results });
-  } catch (err) {
-    console.error("Erro em /api/turn:", err);
-    res.status(500).json({ error: "Erro ao processar turno" });
+    return res.json({ battle: b, results });
+  } catch (e: any) {
+    console.error("Erro em /api/turn:", e);
+    return res.status(500).json({ error: "engine-turn-failed", message: e?.message });
   }
 });
 
 export default router;
-
